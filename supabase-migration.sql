@@ -226,6 +226,9 @@ drop policy if exists "Service write notifications" on public.notifications;
 create policy "Service write notifications" on public.notifications
   for all using (true) with check (true);
 
+-- Enable Realtime for notifications (required for instant push to frontend)
+alter publication supabase_realtime add table public.notifications;
+
 -- 9. Storage bucket
 insert into storage.buckets (id, name, public)
 values ('hospital-files', 'hospital-files', true)
