@@ -8,16 +8,55 @@ router.get("/users", requireAuth, requireRole("admin"), async (req, res) => {
   try {
     const { role, search } = req.query as { role?: string; search?: string };
 
+    // Fetch profiles table
     let query = supabaseAdmin.from("profiles").select("*");
     if (role) query = query.eq("role", role);
     if (search) {
       query = query.or(`full_name.ilike.%${search}%,email.ilike.%${search}%`);
     }
+    const { data: profiles, error: profilesError } = await query.order("created_at", { ascending: false });
 
-    const { data, error } = await query.order("created_at", { ascending: false });
-    if (error) throw error;
+    if (profilesError && profilesError.code !== "PGRST205") throw profilesError;
 
-    res.json(data || []);
+    // Also fetch all auth users so we never miss someone without a profile row
+    const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
+    const authUsers = authData?.users ?? [];
+
+    const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
+
+    // Auto-upsert any auth user that has no profile row yet
+    const missingProfiles = authUsers.filter(u => !profileMap.has(u.id));
+    if (missingProfiles.length > 0) {
+      const rows = missingProfiles.map(u => ({
+        id: u.id,
+        email: u.email ?? "",
+        full_name: (u.user_metadata?.full_name as string) || null,
+        role: (u.user_metadata?.role as string) || "staff",
+        is_active: true,
+      }));
+      const { data: inserted } = await supabaseAdmin
+        .from("profiles")
+        .upsert(rows, { onConflict: "id" })
+        .select();
+      (inserted ?? []).forEach(p => profileMap.set(p.id, p));
+    }
+
+    let result = Array.from(profileMap.values());
+
+    // Apply filters if passed (re-apply in memory since we merged in JS)
+    if (role) result = result.filter(p => p.role === role);
+    if (search) {
+      const q = search.toLowerCase();
+      result = result.filter(p =>
+        p.email?.toLowerCase().includes(q) ||
+        p.full_name?.toLowerCase().includes(q)
+      );
+    }
+
+    // Sort newest first
+    result.sort((a, b) => new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime());
+
+    res.json(result);
   } catch (err) {
     req.log.error({ err }, "Failed to list users");
     res.status(500).json({ error: "Internal server error" });
