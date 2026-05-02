@@ -1,22 +1,34 @@
 openapi: 3.1.0
 info:
-  # Do not change the title, if the title changes, the import paths will be broken
   title: Api
   version: 0.1.0
-  description: API specification
+  description: Taif Children's Hospital Research Platform API
 servers:
   - url: /api
     description: Base API path
 tags:
   - name: health
     description: Health operations
+  - name: auth
+    description: Authentication operations
+  - name: users
+    description: User management
+  - name: landingPage
+    description: Landing page settings
+  - name: documents
+    description: Document management
+  - name: articles
+    description: Articles and blog posts
+  - name: calendar
+    description: Calendar events
+  - name: settings
+    description: Admin settings
 paths:
   /healthz:
     get:
       operationId: healthCheck
       tags: [health]
       summary: Health check
-      description: Returns server health status
       responses:
         "200":
           description: Healthy
@@ -24,6 +36,603 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/HealthStatus"
+
+  /auth/me:
+    get:
+      operationId: getMe
+      tags: [auth]
+      summary: Get current user profile
+      responses:
+        "200":
+          description: Current user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+        "401":
+          description: Unauthorized
+
+  /users:
+    get:
+      operationId: listUsers
+      tags: [users]
+      summary: List all users (admin only)
+      parameters:
+        - name: role
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of users
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/User"
+    post:
+      operationId: createUser
+      tags: [users]
+      summary: Create a new user (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateUserBody"
+      responses:
+        "201":
+          description: Created user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+
+  /users/{id}:
+    get:
+      operationId: getUser
+      tags: [users]
+      summary: Get user by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    patch:
+      operationId: updateUser
+      tags: [users]
+      summary: Update user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateUserBody"
+      responses:
+        "200":
+          description: Updated user
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/User"
+    delete:
+      operationId: deleteUser
+      tags: [users]
+      summary: Delete user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /users/stats:
+    get:
+      operationId: getUserStats
+      tags: [users]
+      summary: Get user statistics by role
+      responses:
+        "200":
+          description: User stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserStats"
+
+  /landing-page:
+    get:
+      operationId: getLandingPage
+      tags: [landingPage]
+      summary: Get landing page configuration
+      responses:
+        "200":
+          description: Landing page config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LandingPageConfig"
+    patch:
+      operationId: updateLandingPage
+      tags: [landingPage]
+      summary: Update landing page config (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateLandingPageBody"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/LandingPageConfig"
+
+  /landing-page/sections:
+    get:
+      operationId: listSections
+      tags: [landingPage]
+      summary: List landing page sections
+      responses:
+        "200":
+          description: Sections list
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Section"
+    post:
+      operationId: createSection
+      tags: [landingPage]
+      summary: Create a new section (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateSectionBody"
+      responses:
+        "201":
+          description: Created section
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Section"
+
+  /landing-page/sections/{id}:
+    patch:
+      operationId: updateSection
+      tags: [landingPage]
+      summary: Update section (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateSectionBody"
+      responses:
+        "200":
+          description: Updated section
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Section"
+    delete:
+      operationId: deleteSection
+      tags: [landingPage]
+      summary: Delete section (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /documents:
+    get:
+      operationId: listDocuments
+      tags: [documents]
+      summary: List documents
+      parameters:
+        - name: type
+          in: query
+          schema:
+            type: string
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of documents
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentList"
+
+  /documents/{id}:
+    get:
+      operationId: getDocument
+      tags: [documents]
+      summary: Get document by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Document"
+    delete:
+      operationId: deleteDocument
+      tags: [documents]
+      summary: Delete document (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /documents/stats:
+    get:
+      operationId: getDocumentStats
+      tags: [documents]
+      summary: Get document statistics by type
+      responses:
+        "200":
+          description: Document stats
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentStats"
+
+  /articles:
+    get:
+      operationId: listArticles
+      tags: [articles]
+      summary: List articles
+      parameters:
+        - name: search
+          in: query
+          schema:
+            type: string
+        - name: page
+          in: query
+          schema:
+            type: integer
+        - name: limit
+          in: query
+          schema:
+            type: integer
+      responses:
+        "200":
+          description: List of articles
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ArticleList"
+    post:
+      operationId: createArticle
+      tags: [articles]
+      summary: Create article
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateArticleBody"
+      responses:
+        "201":
+          description: Created article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+
+  /articles/{id}:
+    get:
+      operationId: getArticle
+      tags: [articles]
+      summary: Get article by ID
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+    patch:
+      operationId: updateArticle
+      tags: [articles]
+      summary: Update article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateArticleBody"
+      responses:
+        "200":
+          description: Updated article
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Article"
+    delete:
+      operationId: deleteArticle
+      tags: [articles]
+      summary: Delete article
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /calendar/events:
+    get:
+      operationId: listEvents
+      tags: [calendar]
+      summary: List calendar events
+      parameters:
+        - name: start
+          in: query
+          schema:
+            type: string
+        - name: end
+          in: query
+          schema:
+            type: string
+        - name: type
+          in: query
+          schema:
+            type: string
+      responses:
+        "200":
+          description: List of events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEvent"
+    post:
+      operationId: createEvent
+      tags: [calendar]
+      summary: Create calendar event
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateEventBody"
+      responses:
+        "201":
+          description: Created event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEvent"
+
+  /calendar/events/{id}:
+    patch:
+      operationId: updateEvent
+      tags: [calendar]
+      summary: Update calendar event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateEventBody"
+      responses:
+        "200":
+          description: Updated event
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/CalendarEvent"
+    delete:
+      operationId: deleteEvent
+      tags: [calendar]
+      summary: Delete calendar event
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Deleted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DeleteResponse"
+
+  /calendar/upcoming:
+    get:
+      operationId: getUpcomingEvents
+      tags: [calendar]
+      summary: Get upcoming events (next 7 days)
+      responses:
+        "200":
+          description: Upcoming events
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/CalendarEvent"
+
+  /settings/theme:
+    get:
+      operationId: getThemeSettings
+      tags: [settings]
+      summary: Get theme settings
+      responses:
+        "200":
+          description: Theme settings
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThemeSettings"
+    patch:
+      operationId: updateThemeSettings
+      tags: [settings]
+      summary: Update theme settings (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateThemeSettingsBody"
+      responses:
+        "200":
+          description: Updated theme
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ThemeSettings"
+
+  /settings/upload-logo:
+    post:
+      operationId: uploadLogo
+      tags: [settings]
+      summary: Upload hospital logo (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadFileBody"
+      responses:
+        "200":
+          description: Logo URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+
+  /settings/upload-background:
+    post:
+      operationId: uploadBackground
+      tags: [settings]
+      summary: Upload login background image (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadFileBody"
+      responses:
+        "200":
+          description: Background URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+
+  /dashboard/summary:
+    get:
+      operationId: getDashboardSummary
+      tags: [settings]
+      summary: Get dashboard summary stats
+      responses:
+        "200":
+          description: Summary
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DashboardSummary"
+
 components:
   schemas:
     HealthStatus:
@@ -31,6 +640,536 @@ components:
       properties:
         status:
           type: string
-      required:
-        - status
+      required: [status]
 
+    DeleteResponse:
+      type: object
+      properties:
+        success:
+          type: boolean
+        message:
+          type: string
+      required: [success]
+
+    UserProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        full_name:
+          type: ["string", "null"]
+        full_name_ar:
+          type: ["string", "null"]
+        role:
+          type: string
+        avatar_url:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+      required: [id, email, role, is_active, created_at]
+
+    User:
+      type: object
+      properties:
+        id:
+          type: string
+        email:
+          type: string
+        full_name:
+          type: ["string", "null"]
+        full_name_ar:
+          type: ["string", "null"]
+        role:
+          type: string
+        department:
+          type: ["string", "null"]
+        avatar_url:
+          type: ["string", "null"]
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+        last_sign_in_at:
+          type: ["string", "null"]
+      required: [id, email, role, is_active, created_at]
+
+    CreateUserBody:
+      type: object
+      properties:
+        email:
+          type: string
+        password:
+          type: string
+        full_name:
+          type: string
+        full_name_ar:
+          type: ["string", "null"]
+        role:
+          type: string
+        department:
+          type: ["string", "null"]
+      required: [email, password, full_name, role]
+
+    UpdateUserBody:
+      type: object
+      properties:
+        full_name:
+          type: ["string", "null"]
+        full_name_ar:
+          type: ["string", "null"]
+        role:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        is_active:
+          type: ["boolean", "null"]
+
+    UserStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        by_role:
+          type: array
+          items:
+            type: object
+            properties:
+              role:
+                type: string
+              count:
+                type: integer
+            required: [role, count]
+        active:
+          type: integer
+        inactive:
+          type: integer
+      required: [total, by_role, active, inactive]
+
+    LandingPageConfig:
+      type: object
+      properties:
+        id:
+          type: string
+        hospital_name:
+          type: string
+        hospital_name_ar:
+          type: ["string", "null"]
+        logo_url:
+          type: ["string", "null"]
+        background_url:
+          type: ["string", "null"]
+        theme_colors:
+          type: array
+          items:
+            type: string
+        nav_items:
+          type: array
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              label_ar:
+                type: ["string", "null"]
+              href:
+                type: string
+            required: [label, href]
+        updated_at:
+          type: string
+      required: [id, hospital_name, theme_colors, nav_items, updated_at]
+
+    UpdateLandingPageBody:
+      type: object
+      properties:
+        hospital_name:
+          type: ["string", "null"]
+        hospital_name_ar:
+          type: ["string", "null"]
+        theme_colors:
+          type: ["array", "null"]
+          items:
+            type: string
+        nav_items:
+          type: ["array", "null"]
+          items:
+            type: object
+            properties:
+              label:
+                type: string
+              label_ar:
+                type: ["string", "null"]
+              href:
+                type: string
+            required: [label, href]
+
+    Section:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        description_ar:
+          type: ["string", "null"]
+        order_index:
+          type: integer
+        is_visible:
+          type: boolean
+        created_at:
+          type: string
+      required: [id, title, order_index, is_visible, created_at]
+
+    CreateSectionBody:
+      type: object
+      properties:
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        description_ar:
+          type: ["string", "null"]
+        order_index:
+          type: integer
+      required: [title, order_index]
+
+    UpdateSectionBody:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        title_ar:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        description_ar:
+          type: ["string", "null"]
+        order_index:
+          type: ["integer", "null"]
+        is_visible:
+          type: ["boolean", "null"]
+
+    Document:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        file_name:
+          type: string
+        file_type:
+          type: string
+        file_size:
+          type: integer
+        file_url:
+          type: string
+        uploaded_by:
+          type: string
+        uploader_name:
+          type: ["string", "null"]
+        created_at:
+          type: string
+        description:
+          type: ["string", "null"]
+      required: [id, title, file_name, file_type, file_size, file_url, uploaded_by, created_at]
+
+    DocumentList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Document"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [items, total, page, limit]
+
+    DocumentStats:
+      type: object
+      properties:
+        total:
+          type: integer
+        by_type:
+          type: array
+          items:
+            type: object
+            properties:
+              type:
+                type: string
+              count:
+                type: integer
+            required: [type, count]
+        total_size_bytes:
+          type: integer
+      required: [total, by_type, total_size_bytes]
+
+    Article:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        content:
+          type: string
+        content_ar:
+          type: ["string", "null"]
+        excerpt:
+          type: ["string", "null"]
+        excerpt_ar:
+          type: ["string", "null"]
+        cover_image_url:
+          type: ["string", "null"]
+        author_id:
+          type: string
+        author_name:
+          type: ["string", "null"]
+        is_published:
+          type: boolean
+        published_at:
+          type: ["string", "null"]
+        created_at:
+          type: string
+        updated_at:
+          type: string
+      required: [id, title, content, author_id, is_published, created_at, updated_at]
+
+    ArticleList:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: "#/components/schemas/Article"
+        total:
+          type: integer
+        page:
+          type: integer
+        limit:
+          type: integer
+      required: [items, total, page, limit]
+
+    CreateArticleBody:
+      type: object
+      properties:
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        content:
+          type: string
+        content_ar:
+          type: ["string", "null"]
+        excerpt:
+          type: ["string", "null"]
+        excerpt_ar:
+          type: ["string", "null"]
+        cover_image_url:
+          type: ["string", "null"]
+        is_published:
+          type: boolean
+      required: [title, content, is_published]
+
+    UpdateArticleBody:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        title_ar:
+          type: ["string", "null"]
+        content:
+          type: ["string", "null"]
+        content_ar:
+          type: ["string", "null"]
+        excerpt:
+          type: ["string", "null"]
+        excerpt_ar:
+          type: ["string", "null"]
+        cover_image_url:
+          type: ["string", "null"]
+        is_published:
+          type: ["boolean", "null"]
+
+    CalendarEvent:
+      type: object
+      properties:
+        id:
+          type: string
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        description_ar:
+          type: ["string", "null"]
+        event_type:
+          type: string
+        start_time:
+          type: string
+        end_time:
+          type: ["string", "null"]
+        all_day:
+          type: boolean
+        location:
+          type: ["string", "null"]
+        created_by:
+          type: string
+        creator_name:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+        created_at:
+          type: string
+      required: [id, title, event_type, start_time, all_day, created_by, created_at]
+
+    CreateEventBody:
+      type: object
+      properties:
+        title:
+          type: string
+        title_ar:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        description_ar:
+          type: ["string", "null"]
+        event_type:
+          type: string
+        start_time:
+          type: string
+        end_time:
+          type: ["string", "null"]
+        all_day:
+          type: boolean
+        location:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+      required: [title, event_type, start_time, all_day]
+
+    UpdateEventBody:
+      type: object
+      properties:
+        title:
+          type: ["string", "null"]
+        title_ar:
+          type: ["string", "null"]
+        description:
+          type: ["string", "null"]
+        description_ar:
+          type: ["string", "null"]
+        event_type:
+          type: ["string", "null"]
+        start_time:
+          type: ["string", "null"]
+        end_time:
+          type: ["string", "null"]
+        all_day:
+          type: ["boolean", "null"]
+        location:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+
+    ThemeSettings:
+      type: object
+      properties:
+        id:
+          type: string
+        primary_color:
+          type: string
+        theme_colors:
+          type: array
+          items:
+            type: string
+        font_family:
+          type: string
+        style:
+          type: string
+        logo_url:
+          type: ["string", "null"]
+        background_url:
+          type: ["string", "null"]
+        updated_at:
+          type: string
+      required: [id, primary_color, theme_colors, font_family, style, updated_at]
+
+    UpdateThemeSettingsBody:
+      type: object
+      properties:
+        primary_color:
+          type: ["string", "null"]
+        theme_colors:
+          type: ["array", "null"]
+          items:
+            type: string
+        font_family:
+          type: ["string", "null"]
+        style:
+          type: ["string", "null"]
+
+    UploadFileBody:
+      type: object
+      properties:
+        file_base64:
+          type: string
+        file_name:
+          type: string
+        mime_type:
+          type: string
+      required: [file_base64, file_name, mime_type]
+
+    UploadResponse:
+      type: object
+      properties:
+        url:
+          type: string
+        path:
+          type: string
+      required: [url, path]
+
+    DashboardSummary:
+      type: object
+      properties:
+        total_users:
+          type: integer
+        total_documents:
+          type: integer
+        total_articles:
+          type: integer
+        upcoming_events:
+          type: integer
+        recent_documents:
+          type: array
+          items:
+            $ref: "#/components/schemas/Document"
+        recent_articles:
+          type: array
+          items:
+            $ref: "#/components/schemas/Article"
+        upcoming_events_list:
+          type: array
+          items:
+            $ref: "#/components/schemas/CalendarEvent"
+      required: [total_users, total_documents, total_articles, upcoming_events, recent_documents, recent_articles, upcoming_events_list]

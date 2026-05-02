@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Taif Children's Hospital Research Platform"
+version = "1.0.0"
+id = "artifacts/hospital-research"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18622
+
+[services.development]
+run = "pnpm --filter @workspace/hospital-research run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/hospital-research", "run", "build" ]
+publicDir = "artifacts/hospital-research/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18622"
+BASE_PATH = "/"
