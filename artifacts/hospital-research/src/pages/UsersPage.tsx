@@ -3,11 +3,12 @@ import { useTranslation } from "react-i18next";
 import {
   useListUsers, getListUsersQueryKey,
   useCreateUser, useUpdateUser, useDeleteUser,
-  useGetUserStats, getGetUserStatsQueryKey
+  useGetUserStats, getGetUserStatsQueryKey,
+  useResetUserPassword,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import i18n from "i18next";
-import { UserPlus, Search, Pencil, Trash2, MoreHorizontal, Users } from "lucide-react";
+import { UserPlus, Search, Pencil, Trash2, MoreHorizontal, Users, KeyRound, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -50,6 +51,8 @@ export default function UsersPage() {
   const [createOpen, setCreateOpen] = useState(false);
   const [editUser, setEditUser] = useState<{ id: string; form: UserForm } | null>(null);
   const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [resetPasswordUser, setResetPasswordUser] = useState<{ id: string; email: string } | null>(null);
+  const [resetStatus, setResetStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [form, setForm] = useState<UserForm>(emptyForm());
   const [saving, setSaving] = useState(false);
 
@@ -64,6 +67,7 @@ export default function UsersPage() {
   const createUser = useCreateUser();
   const updateUser = useUpdateUser();
   const deleteUser = useDeleteUser();
+  const resetPassword = useResetUserPassword();
 
   const invalidate = () => {
     qc.invalidateQueries({ queryKey: getListUsersQueryKey() });
@@ -100,6 +104,19 @@ export default function UsersPage() {
     await deleteUser.mutateAsync({ id: deleteId });
     invalidate(); setDeleteId(null);
   };
+
+  const handleResetPassword = async () => {
+    if (!resetPasswordUser) return;
+    try {
+      await resetPassword.mutateAsync({ id: resetPasswordUser.id });
+      setResetStatus({ ok: true, msg: isAr ? `تم إرسال رابط إعادة التعيين إلى ${resetPasswordUser.email}` : `Reset link sent to ${resetPasswordUser.email}` });
+    } catch {
+      setResetStatus({ ok: false, msg: isAr ? "فشل إرسال البريد الإلكتروني" : "Failed to send reset email" });
+    }
+    setResetPasswordUser(null);
+  };
+
+  const isAr = i18n.language === "ar";
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -208,6 +225,9 @@ export default function UsersPage() {
                             department: user.department || "", is_active: user.is_active
                           }})}>
                             <Pencil className="w-3.5 h-3.5 me-2" />{t("common.edit")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setResetPasswordUser({ id: user.id, email: user.email })}>
+                            <KeyRound className="w-3.5 h-3.5 me-2" />{isAr ? "إعادة تعيين كلمة المرور" : "Reset Password"}
                           </DropdownMenuItem>
                           <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(user.id)}>
                             <Trash2 className="w-3.5 h-3.5 me-2" />{t("common.delete")}
@@ -329,6 +349,49 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Reset Password confirm */}
+      <AlertDialog open={!!resetPasswordUser} onOpenChange={v => !v && setResetPasswordUser(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <KeyRound className="w-4 h-4" />
+              {isAr ? "إعادة تعيين كلمة المرور" : "Reset Password"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {isAr
+                ? `سيتم إرسال رابط إعادة تعيين كلمة المرور إلى ${resetPasswordUser?.email}. هل تريد المتابعة؟`
+                : `A password reset link will be sent to ${resetPasswordUser?.email}. Continue?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>{t("common.cancel")}</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleResetPassword}
+              disabled={resetPassword.isPending}
+              className="gap-2"
+            >
+              <KeyRound className="w-3.5 h-3.5" />
+              {resetPassword.isPending
+                ? (isAr ? "جارٍ الإرسال..." : "Sending...")
+                : (isAr ? "إرسال الرابط" : "Send Reset Link")}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reset status toast */}
+      {resetStatus && (
+        <div className={`fixed bottom-6 end-6 z-50 flex items-center gap-3 px-4 py-3 rounded-lg shadow-lg text-sm font-medium transition-all ${
+          resetStatus.ok ? "bg-emerald-50 border border-emerald-200 text-emerald-800" : "bg-red-50 border border-red-200 text-red-800"
+        }`}>
+          {resetStatus.ok
+            ? <CheckCircle2 className="w-4 h-4 text-emerald-500 flex-shrink-0" />
+            : <AlertCircle className="w-4 h-4 text-red-500 flex-shrink-0" />}
+          <span>{resetStatus.msg}</span>
+          <button onClick={() => setResetStatus(null)} className="ms-2 text-current opacity-60 hover:opacity-100">✕</button>
+        </div>
+      )}
     </div>
   );
 }

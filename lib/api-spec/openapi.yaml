@@ -251,6 +251,25 @@ paths:
               schema:
                 $ref: "#/components/schemas/DeleteResponse"
 
+  /users/{id}/reset-password:
+    post:
+      operationId: resetUserPassword
+      tags: [users]
+      summary: Send password reset email to user (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Reset email sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
   /users/stats:
     get:
       operationId: getUserStats

@@ -102,6 +102,39 @@ router.post("/users", requireAuth, requireRole("admin"), async (req, res) => {
   }
 });
 
+router.post("/users/:id/reset-password", requireAuth, requireRole("admin"), async (req, res) => {
+  try {
+    // Fetch the user's email from their profile
+    const { data: profile, error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .select("email")
+      .eq("id", req.params.id)
+      .single();
+
+    if (profileError || !profile) {
+      res.status(404).json({ error: "User not found" });
+      return;
+    }
+
+    // Send password reset email via Supabase Auth
+    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
+      profile.email,
+      { redirectTo: undefined }
+    );
+
+    if (error) {
+      req.log.error({ err: error }, "Failed to send password reset email");
+      res.status(400).json({ error: error.message });
+      return;
+    }
+
+    res.json({ success: true, message: `Password reset email sent to ${profile.email}` });
+  } catch (err) {
+    req.log.error({ err }, "Failed to reset user password");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 router.get("/users/stats", requireAuth, requireRole("admin"), async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin.from("profiles").select("role, is_active");

@@ -205,6 +205,18 @@ export const DeleteUserResponse = zod.object({
 });
 
 /**
+ * @summary Send password reset email to user (admin only)
+ */
+export const ResetUserPasswordParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const ResetUserPasswordResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().nullish(),
+});
+
+/**
  * @summary Get user statistics by role
  */
 export const GetUserStatsResponse = zod.object({
