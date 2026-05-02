@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
 import { useLocation } from "wouter";
 import { Bell, BellOff, Check, CheckCheck, FileText, BookOpen, Calendar, User, Settings, Trash2 } from "lucide-react";
@@ -9,6 +9,8 @@ import {
   useMarkNotificationRead, useMarkAllNotificationsRead,
   useClearAllNotifications,
 } from "@workspace/api-client-react";
+import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -50,11 +52,47 @@ export function NotificationBell() {
   const [, navigate] = useLocation();
   const [open, setOpen] = useState(false);
   const qc = useQueryClient();
+  const { user, session } = useAuth();
+  const channelRef = useRef<ReturnType<typeof supabase.channel> | null>(null);
+
+  const invalidate = useCallback(() => {
+    qc.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
+    qc.invalidateQueries({ queryKey: getGetUnreadCountQueryKey() });
+  }, [qc]);
+
+  // Realtime subscription — fires when a new notification row is inserted for this user
+  useEffect(() => {
+    if (!user?.id || !session) return;
+
+    const channel = supabase
+      .channel(`notifications:${user.id}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "INSERT",
+          schema: "public",
+          table: "notifications",
+          filter: `user_id=eq.${user.id}`,
+        },
+        () => {
+          // Invalidate queries so the bell badge and panel refresh instantly
+          invalidate();
+        }
+      )
+      .subscribe();
+
+    channelRef.current = channel;
+
+    return () => {
+      supabase.removeChannel(channel);
+      channelRef.current = null;
+    };
+  }, [user?.id, session, invalidate]);
 
   const { data: countData } = useGetUnreadCount({
     query: {
       queryKey: getGetUnreadCountQueryKey(),
-      refetchInterval: 30000,
+      refetchInterval: 60000, // fallback poll every 60s (realtime handles instant updates)
     },
   });
   const unreadCount = countData?.count ?? 0;
@@ -73,11 +111,6 @@ export function NotificationBell() {
   const markRead = useMarkNotificationRead();
   const markAllRead = useMarkAllNotificationsRead();
   const clearAll = useClearAllNotifications();
-
-  const invalidate = useCallback(() => {
-    qc.invalidateQueries({ queryKey: getListNotificationsQueryKey() });
-    qc.invalidateQueries({ queryKey: getGetUnreadCountQueryKey() });
-  }, [qc]);
 
   const handleMarkRead = (id: string) => {
     markRead.mutate({ id }, { onSuccess: invalidate });
@@ -185,15 +218,17 @@ export function NotificationBell() {
                     )}
                   >
                     <div className={cn(
-                      "mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0",
-                      "bg-muted",
+                      "mt-0.5 w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 bg-muted",
                       typeColor[n.type]
                     )}>
                       <Icon className="w-4 h-4" />
                     </div>
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center justify-between gap-2">
-                        <p className={cn("text-xs font-semibold truncate", !n.is_read && "text-foreground", n.is_read && "text-muted-foreground")}>
+                        <p className={cn(
+                          "text-xs font-semibold truncate",
+                          !n.is_read ? "text-foreground" : "text-muted-foreground"
+                        )}>
                           {title}
                         </p>
                         <span className="text-[10px] text-muted-foreground flex-shrink-0">
@@ -218,6 +253,13 @@ export function NotificationBell() {
             </div>
           )}
         </ScrollArea>
+
+        {/* Footer hint */}
+        <div className="px-4 py-2 border-t border-border">
+          <p className="text-[10px] text-muted-foreground text-center">
+            {isAr ? "الإشعارات تصل فورياً" : "Notifications arrive in real-time"}
+          </p>
+        </div>
       </PopoverContent>
     </Popover>
   );

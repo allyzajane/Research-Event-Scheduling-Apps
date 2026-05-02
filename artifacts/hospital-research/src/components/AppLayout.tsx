@@ -76,20 +76,20 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         {visibleItems.map(item => {
           const active = location === item.href || location.startsWith(item.href + "/");
           return (
-            <Link key={item.href} href={item.href}>
-              <a
-                onClick={() => setSidebarOpen(false)}
-                className={cn(
-                  "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
-                  active
-                    ? "bg-primary text-white shadow-sm"
-                    : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
-                )}
-              >
-                <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
-                <span>{item.label}</span>
-                {active && <ChevronRight className="w-3.5 h-3.5 ms-auto opacity-60" />}
-              </a>
+            <Link
+              key={item.href}
+              href={item.href}
+              onClick={() => setSidebarOpen(false)}
+              className={cn(
+                "flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors",
+                active
+                  ? "bg-primary text-white shadow-sm"
+                  : "text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground"
+              )}
+            >
+              <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
+              <span>{item.label}</span>
+              {active && <ChevronRight className="w-3.5 h-3.5 ms-auto opacity-60" />}
             </Link>
           );
         })}

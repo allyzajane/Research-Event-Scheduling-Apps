@@ -5,6 +5,7 @@ export interface AuthUser {
   id: string;
   email: string;
   role: string;
+  full_name: string | null;
 }
 
 declare global {
@@ -31,10 +32,12 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   }
 
   const role = (data.user.user_metadata?.role as string) || "staff";
+  const full_name = (data.user.user_metadata?.full_name as string) || null;
   req.user = {
     id: data.user.id,
     email: data.user.email || "",
     role,
+    full_name,
   };
 
   next();
