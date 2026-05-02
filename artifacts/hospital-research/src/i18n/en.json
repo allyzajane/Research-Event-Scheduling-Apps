@@ -231,5 +231,20 @@
     "subtitle": "Your account information",
     "memberSince": "Member since",
     "lastActive": "Last active"
+  },
+  "notifications": {
+    "title": "Notifications",
+    "noNotifications": "You're all caught up!",
+    "noNotificationsDesc": "No new notifications",
+    "markAllRead": "Mark all as read",
+    "clearAll": "Clear all",
+    "unread": "unread",
+    "types": {
+      "document": "Document",
+      "article": "Article",
+      "event": "Event",
+      "user": "User",
+      "system": "System"
+    }
   }
 }

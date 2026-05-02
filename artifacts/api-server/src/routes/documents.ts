@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
+import { notifyAllUsers } from "../lib/notifyAll";
 
 const router = Router();
 
@@ -119,6 +120,16 @@ router.post("/documents/upload", requireAuth, async (req, res) => {
       .single();
 
     if (docError) throw docError;
+
+    notifyAllUsers({
+      type: "document",
+      title: "New Document Uploaded",
+      title_ar: "تم رفع وثيقة جديدة",
+      body: `"${doc.title}" has been added to the documents library.`,
+      body_ar: `تمت إضافة "${doc.title}" إلى مكتبة الوثائق.`,
+      link: "/documents",
+      exclude_user_id: req.user!.id,
+    }).catch(() => {});
 
     res.status(201).json(doc);
   } catch (err) {

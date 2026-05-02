@@ -365,6 +365,37 @@ export interface UploadResponse {
   path: string;
 }
 
+export interface SuccessResponse {
+  success: boolean;
+  /** @nullable */
+  message?: string | null;
+}
+
+export interface Notification {
+  id: string;
+  user_id: string;
+  type: string;
+  title: string;
+  /** @nullable */
+  title_ar?: string | null;
+  body: string;
+  /** @nullable */
+  body_ar?: string | null;
+  /** @nullable */
+  link?: string | null;
+  is_read: boolean;
+  created_at: string;
+}
+
+export interface NotificationList {
+  items: Notification[];
+  unread_count: number;
+}
+
+export interface UnreadCount {
+  count: number;
+}
+
 export interface DashboardSummary {
   total_users: number;
   total_documents: number;
@@ -374,6 +405,11 @@ export interface DashboardSummary {
   recent_articles: Article[];
   upcoming_events_list: CalendarEvent[];
 }
+
+export type ListNotificationsParams = {
+  unread_only?: string;
+  limit?: string;
+};
 
 export type ListUsersParams = {
   role?: string;

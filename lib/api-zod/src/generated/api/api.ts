@@ -8,6 +8,87 @@
 import * as zod from "zod";
 
 /**
+ * @summary List notifications for current user
+ */
+export const ListNotificationsQueryParams = zod.object({
+  unread_only: zod.coerce.string().optional(),
+  limit: zod.coerce.string().optional(),
+});
+
+export const ListNotificationsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      user_id: zod.string(),
+      type: zod.string(),
+      title: zod.string(),
+      title_ar: zod.string().nullish(),
+      body: zod.string(),
+      body_ar: zod.string().nullish(),
+      link: zod.string().nullish(),
+      is_read: zod.boolean(),
+      created_at: zod.string(),
+    }),
+  ),
+  unread_count: zod.number(),
+});
+
+/**
+ * @summary Delete all notifications for current user
+ */
+export const ClearAllNotificationsResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().nullish(),
+});
+
+/**
+ * @summary Get unread notification count
+ */
+export const GetUnreadCountResponse = zod.object({
+  count: zod.number(),
+});
+
+/**
+ * @summary Mark all notifications as read
+ */
+export const MarkAllNotificationsReadResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().nullish(),
+});
+
+/**
+ * @summary Mark a single notification as read
+ */
+export const MarkNotificationReadParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const MarkNotificationReadResponse = zod.object({
+  id: zod.string(),
+  user_id: zod.string(),
+  type: zod.string(),
+  title: zod.string(),
+  title_ar: zod.string().nullish(),
+  body: zod.string(),
+  body_ar: zod.string().nullish(),
+  link: zod.string().nullish(),
+  is_read: zod.boolean(),
+  created_at: zod.string(),
+});
+
+/**
+ * @summary Delete a notification
+ */
+export const DeleteNotificationParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteNotificationResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().nullish(),
+});
+
+/**
  * @summary Health check
  */
 export const HealthCheckResponse = zod.object({

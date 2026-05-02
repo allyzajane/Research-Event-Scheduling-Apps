@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
+import { notifyAllUsers } from "../lib/notifyAll";
 
 const router = Router();
 
@@ -56,6 +57,17 @@ router.post("/calendar/events", requireAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    notifyAllUsers({
+      type: "event",
+      title: "New Event Added",
+      title_ar: "تمت إضافة حدث جديد",
+      body: `"${data.title}" has been scheduled.`,
+      body_ar: `تمت جدولة "${data.title_ar || data.title}".`,
+      link: "/calendar",
+      exclude_user_id: req.user!.id,
+    }).catch(() => {});
+
     res.status(201).json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to create event");

@@ -8,6 +8,7 @@ import {
   LayoutDashboard, Users, FileText, BookOpen, Calendar,
   Settings, User, LogOut, Menu, X, ChevronRight, Hospital
 } from "lucide-react";
+import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -114,7 +115,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuItem asChild>
-              <Link href="/profile"><a className="flex items-center gap-2"><User className="w-4 h-4" />{t("nav.profile")}</a></Link>
+              <Link href="/profile" className="flex items-center gap-2"><User className="w-4 h-4" />{t("nav.profile")}</Link>
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={signOut} className="text-destructive">
@@ -158,6 +159,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-2">
+            <NotificationBell />
             <Button variant="outline" size="sm" onClick={toggleLang} className="text-xs font-semibold px-3 h-8">
               {i18n.language === "ar" ? "EN" : "عر"}
             </Button>

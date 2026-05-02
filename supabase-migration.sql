@@ -198,7 +198,35 @@ insert into public.theme_settings (id, primary_color, style, font_family)
 values ('default', '#2f9acb', 'modern', 'Plus Jakarta Sans')
 on conflict (id) do nothing;
 
--- 8. Storage bucket
+-- 8. notifications
+create table if not exists public.notifications (
+  id uuid primary key default gen_random_uuid(),
+  user_id uuid not null references public.profiles(id) on delete cascade,
+  type text not null default 'system'
+    check (type in ('document','article','event','user','system')),
+  title text not null,
+  title_ar text,
+  body text not null,
+  body_ar text,
+  link text,
+  is_read boolean not null default false,
+  created_at timestamptz not null default now()
+);
+
+create index if not exists notifications_user_id_idx on public.notifications(user_id);
+create index if not exists notifications_is_read_idx on public.notifications(user_id, is_read);
+
+alter table public.notifications enable row level security;
+
+drop policy if exists "Users read own notifications" on public.notifications;
+create policy "Users read own notifications" on public.notifications
+  for select using (true);
+
+drop policy if exists "Service write notifications" on public.notifications;
+create policy "Service write notifications" on public.notifications
+  for all using (true) with check (true);
+
+-- 9. Storage bucket
 insert into storage.buckets (id, name, public)
 values ('hospital-files', 'hospital-files', true)
 on conflict (id) do nothing;

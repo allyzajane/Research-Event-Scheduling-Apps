@@ -1,6 +1,7 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
+import { notifyAllUsers } from "../lib/notifyAll";
 
 const router = Router();
 
@@ -57,6 +58,19 @@ router.post("/articles", requireAuth, async (req, res) => {
       .single();
 
     if (error) throw error;
+
+    if (data.is_published) {
+      notifyAllUsers({
+        type: "article",
+        title: "New Article Published",
+        title_ar: "تم نشر مقال جديد",
+        body: `"${data.title}" has been published.`,
+        body_ar: `تم نشر "${data.title_ar || data.title}".`,
+        link: "/articles",
+        exclude_user_id: req.user!.id,
+      }).catch(() => {});
+    }
+
     res.status(201).json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to create article");

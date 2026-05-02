@@ -231,5 +231,20 @@
     "subtitle": "معلومات حسابك",
     "memberSince": "عضو منذ",
     "lastActive": "آخر نشاط"
+  },
+  "notifications": {
+    "title": "الإشعارات",
+    "noNotifications": "أنت على اطلاع بكل شيء!",
+    "noNotificationsDesc": "لا توجد إشعارات جديدة",
+    "markAllRead": "تحديد الكل كمقروء",
+    "clearAll": "مسح الكل",
+    "unread": "غير مقروء",
+    "types": {
+      "document": "وثيقة",
+      "article": "مقال",
+      "event": "حدث",
+      "user": "مستخدم",
+      "system": "نظام"
+    }
   }
 }
