@@ -20,7 +20,7 @@ router.get("/users", requireAuth, requireRole("admin"), async (req, res) => {
 
     // Also fetch all auth users so we never miss someone without a profile row
     const { data: authData } = await supabaseAdmin.auth.admin.listUsers({ perPage: 1000 });
-    const authUsers = authData?.users ?? [];
+    const authUsers = authData ? authData.users : [];
 
     const profileMap = new Map((profiles ?? []).map(p => [p.id, p]));
 
@@ -207,7 +207,7 @@ router.patch("/users/:id", requireAuth, requireRole("admin"), async (req, res) =
     }
 
     if (role !== undefined) {
-      await supabaseAdmin.auth.admin.updateUserById(req.params.id, {
+      await supabaseAdmin.auth.admin.updateUserById(String(req.params.id), {
         user_metadata: { role },
       });
     }
@@ -228,7 +228,7 @@ router.delete("/users/:id", requireAuth, requireRole("admin"), async (req, res) 
 
     if (profileError) throw profileError;
 
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(req.params.id);
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(String(req.params.id));
     if (authError) req.log.warn({ err: authError }, "Failed to delete auth user");
 
     res.json({ success: true, message: "User deleted" });

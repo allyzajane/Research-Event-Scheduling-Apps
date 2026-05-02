@@ -1,8 +1,12 @@
 import { Router } from "express";
 import { requireAuth, requireRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
+import { cache, TTL } from "../lib/cache";
 
 const router = Router();
+
+const LANDING_KEY = "landing:config";
+const SECTIONS_KEY = "landing:sections";
 
 const DEFAULT_CONFIG = {
   id: "default",
@@ -21,6 +25,9 @@ const DEFAULT_CONFIG = {
 };
 
 router.get("/landing-page", async (req, res) => {
+  const cached = cache.get(LANDING_KEY);
+  if (cached) { res.json(cached); return; }
+
   try {
     const { data, error } = await supabaseAdmin
       .from("landing_page_config")
@@ -28,12 +35,9 @@ router.get("/landing-page", async (req, res) => {
       .eq("id", "default")
       .single();
 
-    if (error || !data) {
-      res.json(DEFAULT_CONFIG);
-      return;
-    }
-
-    res.json(data);
+    const result = (error || !data) ? DEFAULT_CONFIG : data;
+    cache.set(LANDING_KEY, result, TTL.STATIC);
+    res.json(result);
   } catch (err) {
     req.log.error({ err }, "Failed to get landing page");
     res.json(DEFAULT_CONFIG);
@@ -55,6 +59,7 @@ router.patch("/landing-page", requireAuth, requireRole("admin"), async (req, res
       .single();
 
     if (error) throw error;
+    cache.del(LANDING_KEY); // invalidate on write
     res.json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to update landing page");
@@ -63,6 +68,9 @@ router.patch("/landing-page", requireAuth, requireRole("admin"), async (req, res
 });
 
 router.get("/landing-page/sections", async (req, res) => {
+  const cached = cache.get<unknown[]>(SECTIONS_KEY);
+  if (cached) { res.json(cached); return; }
+
   try {
     const { data, error } = await supabaseAdmin
       .from("landing_page_sections")
@@ -74,7 +82,9 @@ router.get("/landing-page/sections", async (req, res) => {
       res.json([]);
       return;
     }
-    res.json(data || []);
+    const result = data || [];
+    cache.set(SECTIONS_KEY, result, TTL.STATIC);
+    res.json(result);
   } catch (err) {
     req.log.error({ err }, "Failed to list sections");
     res.json([]);
@@ -92,6 +102,7 @@ router.post("/landing-page/sections", requireAuth, requireRole("admin"), async (
       .single();
 
     if (error) throw error;
+    cache.del(SECTIONS_KEY);
     res.status(201).json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to create section");
@@ -119,6 +130,7 @@ router.patch("/landing-page/sections/:id", requireAuth, requireRole("admin"), as
       return;
     }
 
+    cache.del(SECTIONS_KEY);
     res.json(data);
   } catch (err) {
     req.log.error({ err }, "Failed to update section");
@@ -134,6 +146,7 @@ router.delete("/landing-page/sections/:id", requireAuth, requireRole("admin"), a
       .eq("id", req.params.id);
 
     if (error) throw error;
+    cache.del(SECTIONS_KEY);
     res.json({ success: true, message: "Section deleted" });
   } catch (err) {
     req.log.error({ err }, "Failed to delete section");

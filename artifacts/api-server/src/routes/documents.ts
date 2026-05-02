@@ -5,11 +5,24 @@ import { notifyAllUsers } from "../lib/notifyAll";
 
 const router = Router();
 
+// Free-tier safety: 10 MB per document upload
+const MAX_FILE_BYTES = 10 * 1024 * 1024;
+
+const ALLOWED_MIME_TYPES = new Set([
+  "application/pdf",
+  "application/vnd.ms-excel",
+  "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+  "text/csv",
+  "application/msword",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+  "image/png", "image/jpeg", "image/jpg", "image/gif", "image/webp",
+]);
+
 router.get("/documents", requireAuth, async (req, res) => {
   try {
     const { type, search, page = "1", limit = "20" } = req.query as Record<string, string>;
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = Math.min(parseInt(limit, 10) || 20, 100);
+    const limitNum = Math.min(parseInt(limit, 10) || 20, 50); // cap at 50 per page
     const offset = (pageNum - 1) * limitNum;
 
     let query = supabaseAdmin
@@ -44,6 +57,7 @@ router.get("/documents", requireAuth, async (req, res) => {
 
 router.get("/documents/stats", requireAuth, async (req, res) => {
   try {
+    // Only select what we need (avoid transferring file content)
     const { data, error } = await supabaseAdmin
       .from("documents")
       .select("file_type, file_size");
@@ -83,7 +97,22 @@ router.post("/documents/upload", requireAuth, async (req, res) => {
       return;
     }
 
+    // MIME type validation
+    if (!ALLOWED_MIME_TYPES.has(mime_type)) {
+      res.status(400).json({ error: "File type not allowed. Supported: PDF, Excel, CSV, Word, and common images." });
+      return;
+    }
+
     const buffer = Buffer.from(file_base64, "base64");
+
+    // File size guard — 10 MB max
+    if (buffer.length > MAX_FILE_BYTES) {
+      res.status(400).json({
+        error: `File exceeds the 10 MB limit. Uploaded file is ${(buffer.length / 1024 / 1024).toFixed(1)} MB.`,
+      });
+      return;
+    }
+
     const path = `documents/${Date.now()}_${file_name}`;
 
     const { data: uploadData, error: uploadError } = await supabaseAdmin.storage

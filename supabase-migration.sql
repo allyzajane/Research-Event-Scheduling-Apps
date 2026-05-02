@@ -245,3 +245,35 @@ create policy "Auth upload hospital-files" on storage.objects
 drop policy if exists "Auth delete hospital-files" on storage.objects;
 create policy "Auth delete hospital-files" on storage.objects
   for delete using (bucket_id = 'hospital-files');
+
+-- =============================================================
+-- Free-Tier Cleanup: keep notifications table small
+-- Run this periodically (e.g. monthly) in Supabase SQL Editor
+-- =============================================================
+
+-- Delete notifications older than 30 days
+create or replace function public.cleanup_old_notifications()
+returns void language plpgsql security definer as $$
+begin
+  -- Remove notifications older than 30 days
+  delete from public.notifications
+  where created_at < now() - interval '30 days';
+
+  -- For each user, keep only the 50 most recent notifications
+  delete from public.notifications
+  where id in (
+    select id from (
+      select id,
+             row_number() over (partition by user_id order by created_at desc) as rn
+      from public.notifications
+    ) ranked
+    where rn > 50
+  );
+end;
+$$;
+
+-- Optional: schedule automatic cleanup every day via pg_cron (if enabled)
+-- select cron.schedule('cleanup-notifications', '0 3 * * *', 'select public.cleanup_old_notifications()');
+
+-- Run once now to start clean
+select public.cleanup_old_notifications();
