@@ -274,6 +274,12 @@ export interface CalendarEvent {
   /** @nullable */
   description_ar?: string | null;
   event_type: string;
+  /** @nullable */
+  organizer?: string | null;
+  /** @nullable */
+  venue?: string | null;
+  participants?: string[];
+  event_status: string;
   start_time: string;
   /** @nullable */
   end_time?: string | null;
@@ -297,6 +303,12 @@ export interface CreateEventBody {
   /** @nullable */
   description_ar?: string | null;
   event_type: string;
+  /** @nullable */
+  organizer?: string | null;
+  /** @nullable */
+  venue?: string | null;
+  participants?: string[];
+  event_status?: string;
   start_time: string;
   /** @nullable */
   end_time?: string | null;
@@ -318,6 +330,13 @@ export interface UpdateEventBody {
   description_ar?: string | null;
   /** @nullable */
   event_type?: string | null;
+  /** @nullable */
+  organizer?: string | null;
+  /** @nullable */
+  venue?: string | null;
+  participants?: string[];
+  /** @nullable */
+  event_status?: string | null;
   /** @nullable */
   start_time?: string | null;
   /** @nullable */

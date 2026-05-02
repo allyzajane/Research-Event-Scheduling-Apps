@@ -1143,6 +1143,16 @@ components:
           type: ["string", "null"]
         event_type:
           type: string
+        organizer:
+          type: ["string", "null"]
+        venue:
+          type: ["string", "null"]
+        participants:
+          type: array
+          items:
+            type: string
+        event_status:
+          type: string
         start_time:
           type: string
         end_time:
@@ -1159,7 +1169,7 @@ components:
           type: ["string", "null"]
         created_at:
           type: string
-      required: [id, title, event_type, start_time, all_day, created_by, created_at]
+      required: [id, title, event_type, start_time, all_day, created_by, created_at, event_status]
 
     CreateEventBody:
       type: object
@@ -1173,6 +1183,16 @@ components:
         description_ar:
           type: ["string", "null"]
         event_type:
+          type: string
+        organizer:
+          type: ["string", "null"]
+        venue:
+          type: ["string", "null"]
+        participants:
+          type: array
+          items:
+            type: string
+        event_status:
           type: string
         start_time:
           type: string
@@ -1198,6 +1218,16 @@ components:
         description_ar:
           type: ["string", "null"]
         event_type:
+          type: ["string", "null"]
+        organizer:
+          type: ["string", "null"]
+        venue:
+          type: ["string", "null"]
+        participants:
+          type: array
+          items:
+            type: string
+        event_status:
           type: ["string", "null"]
         start_time:
           type: ["string", "null"]

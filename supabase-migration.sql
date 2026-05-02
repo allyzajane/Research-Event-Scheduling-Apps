@@ -229,6 +229,32 @@ create policy "Service write notifications" on public.notifications
 -- Enable Realtime for notifications (required for instant push to frontend)
 alter publication supabase_realtime add table public.notifications;
 
+-- =============================================================
+-- Calendar events: add new columns for rich scheduling
+-- (Safe to run multiple times — uses IF NOT EXISTS)
+-- =============================================================
+alter table public.calendar_events
+  add column if not exists organizer text,
+  add column if not exists venue text,
+  add column if not exists participants jsonb not null default '[]'::jsonb,
+  add column if not exists event_status text not null default 'active',
+  add column if not exists description text,
+  add column if not exists description_ar text;
+
+-- Widen event_type to include conference
+alter table public.calendar_events
+  drop constraint if exists calendar_events_event_type_check;
+alter table public.calendar_events
+  add constraint calendar_events_event_type_check
+    check (event_type in ('event', 'meeting', 'conference', 'announcement'));
+
+-- Add event_status constraint
+alter table public.calendar_events
+  drop constraint if exists calendar_events_event_status_check;
+alter table public.calendar_events
+  add constraint calendar_events_event_status_check
+    check (event_status in ('active', 'canceled', 'rescheduled'));
+
 -- 9. Storage bucket
 insert into storage.buckets (id, name, public)
 values ('hospital-files', 'hospital-files', true)
