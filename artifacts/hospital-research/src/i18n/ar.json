@@ -450,7 +450,10 @@
     "present": "حاضر",
     "late": "متأخر",
     "half_day": "نصف يوم",
-    "absent": "غائب"
+    "absent": "غائب",
+    "exportCsv": "تصدير CSV",
+    "exportingCsv": "جارٍ التصدير...",
+    "exportedCsv": "تم تصدير ملف CSV بنجاح"
   },
   "notifications": {
     "title": "الإشعارات",

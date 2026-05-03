@@ -450,7 +450,10 @@
     "present": "Present",
     "late": "Late",
     "half_day": "Half Day",
-    "absent": "Absent"
+    "absent": "Absent",
+    "exportCsv": "Export CSV",
+    "exportingCsv": "Exporting...",
+    "exportedCsv": "CSV exported successfully"
   },
   "notifications": {
     "title": "Notifications",

@@ -5,7 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import i18n from "i18next";
 import {
   LogIn, LogOut, Calendar, Clock8, UserCheck,
-  Activity, CheckCircle2, Clock, Trash2,
+  Activity, CheckCircle2, Clock, Trash2, Download,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -71,6 +71,57 @@ function formatDuration(ms: number): string {
   const sec = s % 60;
   if (h > 0) return `${h}h ${String(m).padStart(2, "0")}m`;
   return `${m}m ${String(sec).padStart(2, "0")}s`;
+}
+
+function durationHours(clockIn: string, clockOut: string | null): string {
+  if (!clockOut) return "";
+  const ms = new Date(clockOut).getTime() - new Date(clockIn).getTime();
+  const totalMins = Math.floor(ms / 60000);
+  const h = Math.floor(totalMins / 60);
+  const m = totalMins % 60;
+  return `${h}:${String(m).padStart(2, "0")}`;
+}
+
+function escapeCsv(val: string | null | undefined): string {
+  const s = (val ?? "").replace(/"/g, '""');
+  return /[,"\n]/.test(s) ? `"${s}"` : s;
+}
+
+function buildCsv(records: AttendanceRecord[], showNames: boolean): string {
+  const STATUS_EN: Record<string, string> = {
+    present: "Present", late: "Late", half_day: "Half Day", absent: "Absent",
+  };
+  const headers = [
+    ...(showNames ? ["Name", "Name (AR)"] : []),
+    "Date", "Status", "Clock In (AST)", "Clock Out (AST)", "Duration (H:MM)",
+  ];
+
+  const rows = records.map(r => {
+    const clockIn  = r.clock_in  ? formatTimeAST(r.clock_in,  "en") : "";
+    const clockOut = r.clock_out ? formatTimeAST(r.clock_out, "en") : "";
+    const dur = durationHours(r.clock_in, r.clock_out);
+    return [
+      ...(showNames ? [escapeCsv(r.user_name), escapeCsv(r.user_name_ar)] : []),
+      escapeCsv(r.date),
+      escapeCsv(STATUS_EN[r.status] ?? r.status),
+      escapeCsv(clockIn),
+      escapeCsv(clockOut),
+      escapeCsv(dur),
+    ].join(",");
+  });
+
+  return [headers.join(","), ...rows].join("\r\n");
+}
+
+function downloadCsv(content: string, filename: string) {
+  const bom = "\uFEFF"; // UTF-8 BOM for Excel Arabic support
+  const blob = new Blob([bom + content], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
 }
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -379,7 +430,7 @@ export default function AttendancePage() {
       {/* ── History table ─────────────────────────────────────────────────── */}
       <Card className="shadow-sm">
         <CardHeader className="pb-3 border-b border-border">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-3 flex-wrap">
             <CardTitle className="text-sm font-semibold text-muted-foreground uppercase tracking-wide">
               {t("attendance.history")}
               {filteredUser && (
@@ -388,7 +439,29 @@ export default function AttendancePage() {
                 </span>
               )}
             </CardTitle>
-            <span className="text-xs text-muted-foreground">{records.length} {t("attendance.recordsCount")}</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-muted-foreground">{records.length} {t("attendance.recordsCount")}</span>
+              {records.length > 0 && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-7 gap-1.5 text-xs px-3"
+                  onClick={() => {
+                    const now = new Date();
+                    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+                    const suffix = specificUser
+                      ? (filteredUser?.full_name ?? specificUser).replace(/\s+/g, "-")
+                      : "all-users";
+                    const csv = buildCsv(records, isAdmin);
+                    downloadCsv(csv, `attendance-${ym}-${suffix}.csv`);
+                    toast({ title: t("attendance.exportedCsv") });
+                  }}
+                >
+                  <Download className="w-3 h-3" />
+                  {t("attendance.exportCsv")}
+                </Button>
+              )}
+            </div>
           </div>
         </CardHeader>
         <CardContent className="p-0">
