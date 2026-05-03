@@ -766,6 +766,14 @@ export default function CalendarPage() {
                               🏢 {ev.organizer}
                             </p>
                           )}
+                          {(() => {
+                            const desc = isAr && ev.description_ar ? ev.description_ar : ev.description;
+                            return desc ? (
+                              <p className="text-xs text-muted-foreground truncate mt-0.5 italic">
+                                {desc}
+                              </p>
+                            ) : null;
+                          })()}
                           {Array.isArray(ev.participants) && ev.participants.length > 0 && (
                             <div className="flex items-center gap-1 mt-1">
                               <UserCheck className="w-3 h-3 text-muted-foreground" />
