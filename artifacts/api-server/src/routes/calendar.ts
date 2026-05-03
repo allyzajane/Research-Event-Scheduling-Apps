@@ -126,6 +126,16 @@ function shapeEvent(e: Record<string, unknown>) {
   };
 }
 
+async function getActiveSignatureProfile(userId: string) {
+  const { data } = await supabaseAdmin
+    .from("profiles")
+    .select("full_name, full_name_ar, role, department, signature_url, signature_drawn_url, signature_active_type")
+    .eq("id", userId)
+    .single();
+
+  return data ?? null;
+}
+
 async function addMeetingNumbers(events: Array<Record<string, unknown>>) {
   const sorted = [...events].sort((a, b) => {
     const aTime = new Date(String(a.start_time ?? 0)).getTime();
@@ -198,6 +208,7 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
     const { start, end, type } = req.query as Record<string, string>;
     const userId = req.user!.id;
     const admin  = isAdminRole(req.user!.role);
+    const profile = await getActiveSignatureProfile(userId);
 
     let query = supabaseAdmin
       .from("calendar_events")
@@ -219,7 +230,10 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
 
     const visible = events.filter(ev => isVisibleToUser(ev as Record<string, unknown>, userId, admin));
 
-    res.json(visible);
+    res.json(visible.map(ev => ({
+      ...ev,
+      my_profile: profile,
+    })));
   } catch (err) {
     req.log.error({ err }, "Failed to list events");
     res.json([]);
@@ -277,6 +291,7 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.id;
     const admin  = isAdminRole(req.user!.role);
+    const profile = await getActiveSignatureProfile(userId);
 
     const now = new Date().toISOString();
     const oneWeekLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
@@ -299,7 +314,10 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
 
     const visible = events.filter(ev => isVisibleToUser(ev as Record<string, unknown>, userId, admin));
 
-    res.json(visible.slice(0, 10));
+    res.json(visible.slice(0, 10).map(ev => ({
+      ...ev,
+      my_profile: profile,
+    })));
   } catch (err) {
     req.log.error({ err }, "Failed to get upcoming events");
     res.json([]);
