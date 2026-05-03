@@ -126,6 +126,15 @@ function shapeEvent(e: Record<string, unknown>) {
   };
 }
 
+async function addMeetingNumbers(events: Array<Record<string, unknown>>) {
+  const sorted = [...events].sort((a, b) => {
+    const aTime = new Date(String(a.start_time ?? 0)).getTime();
+    const bTime = new Date(String(b.start_time ?? 0)).getTime();
+    return aTime - bTime;
+  });
+  return sorted.map((event, index) => ({ ...shapeEvent(event), meeting_no: index + 1 }));
+}
+
 function isVisibleToUser(e: Record<string, unknown>, userId: string, admin: boolean) {
   if (admin) return true;
   const participants = Array.isArray(e.participants) ? e.participants : [];
@@ -206,7 +215,7 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
       return;
     }
 
-    const events = (data || []).map(e => shapeEvent(e as Record<string, unknown>));
+    const events = await addMeetingNumbers((data || []) as Array<Record<string, unknown>>);
 
     const visible = events.filter(ev => isVisibleToUser(ev as Record<string, unknown>, userId, admin));
 
@@ -245,7 +254,7 @@ router.post("/calendar/events", requireAuth, requireRole(...ADMIN_ROLES), async 
     if (error || !data) throw error ?? new Error("No data returned");
 
     // Only notify selected participants — no broadcast to all users
-    const shaped = shapeEvent(data as unknown as Record<string, unknown>);
+    const shaped = { ...shapeEvent(data as unknown as Record<string, unknown>), meeting_no: 1 };
     if (shaped.participants.length > 0) {
       notifyParticipants(
         shaped.participants as string[],
@@ -360,7 +369,7 @@ router.patch("/calendar/events/:id", requireAuth, requireRole(...ADMIN_ROLES), a
       ).catch(() => {});
     }
 
-    res.json(shapeEvent(data as unknown as Record<string, unknown>));
+    res.json({ ...shapeEvent(data as unknown as Record<string, unknown>), meeting_no: 1 });
   } catch (err) {
     req.log.error({ err }, "Failed to update event");
     res.status(500).json({ error: "Internal server error" });
