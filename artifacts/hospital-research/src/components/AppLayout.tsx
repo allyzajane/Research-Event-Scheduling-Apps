@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { AuthUser } from "@/contexts/AuthContext";
 import { applyDirection } from "@/i18n/index";
 import i18n from "i18next";
-import { useGetLandingPage, useGetThemeSettings } from "@workspace/api-client-react";
+import { useGetLandingPage, useGetThemeSettings, useGetUpcomingEvents } from "@workspace/api-client-react";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Calendar,
   Settings, User, LogOut, Menu, ChevronRight, Hospital,
@@ -49,6 +49,7 @@ interface NavItem {
   icon: React.ElementType;
   label: string;
   roles: string[];
+  badge?: number;
 }
 
 // ── SidebarProfile — extracted component so it is stable across renders ───────
@@ -217,8 +218,18 @@ function SidebarContent({
               )}
             >
               <item.icon className="w-4.5 h-4.5 flex-shrink-0" />
-              <span>{item.label}</span>
-              {active && <ChevronRight className="w-3.5 h-3.5 ms-auto opacity-60" />}
+              <span className="flex-1">{item.label}</span>
+              {item.badge != null && item.badge > 0 && (
+                <span className={cn(
+                  "ms-auto text-[10px] font-bold leading-none px-1.5 py-0.5 rounded-full min-w-[18px] text-center tabular-nums",
+                  active
+                    ? "bg-white/25 text-white"
+                    : "bg-primary text-white",
+                )}>
+                  {item.badge > 9 ? "9+" : item.badge}
+                </span>
+              )}
+              {active && !item.badge && <ChevronRight className="w-3.5 h-3.5 ms-auto opacity-60" />}
             </Link>
           );
         })}
@@ -249,6 +260,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: themeData } = useGetThemeSettings();
   const logoUrl = landingData?.logo_url || themeData?.logo_url || null;
 
+  const { data: upcomingEvents } = useGetUpcomingEvents();
+  const calendarBadge = (upcomingEvents ?? []).length;
+
   useEffect(() => {
     const id = setInterval(() => setAstClock(getASTClock()), 1000);
     return () => clearInterval(id);
@@ -259,7 +273,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/users",          icon: Users,            label: t("nav.users"),         roles: ["admin"] },
     { href: "/documents",      icon: FileText,         label: t("nav.documents"),     roles: ["admin","ceo","director","doctor","nurse","staff"] },
     { href: "/articles",       icon: BookOpen,         label: t("nav.articles"),      roles: ["admin","ceo","director","doctor","nurse","staff"] },
-    { href: "/calendar",       icon: Calendar,         label: t("nav.calendar"),      roles: ["admin","ceo","director","doctor","nurse","staff"] },
+    { href: "/calendar",       icon: Calendar,         label: t("nav.calendar"),      roles: ["admin","ceo","director","doctor","nurse","staff"], badge: calendarBadge },
     { href: "/admin/broadcast",icon: Megaphone,        label: t("nav.broadcast"),     roles: ["admin"] },
     { href: "/admin/settings", icon: Settings,         label: t("nav.adminSettings"), roles: ["admin"] },
   ];
