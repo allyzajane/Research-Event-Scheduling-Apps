@@ -6,7 +6,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { AuthUser } from "@/contexts/AuthContext";
 import { applyDirection } from "@/i18n/index";
 import i18n from "i18next";
-import { useGetLandingPage, useGetThemeSettings, useGetUpcomingEvents } from "@workspace/api-client-react";
+import { useGetDashboardSummary, getGetDashboardSummaryQueryKey, useGetLandingPage, useGetThemeSettings } from "@workspace/api-client-react";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Calendar,
   Settings, User, LogOut, Menu, ChevronRight, Hospital,
@@ -260,8 +260,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const { data: themeData } = useGetThemeSettings();
   const logoUrl = landingData?.logo_url || themeData?.logo_url || null;
 
-  const { data: upcomingEvents } = useGetUpcomingEvents();
-  const calendarBadge = (upcomingEvents ?? []).length;
+  const { data: dashboardSummary } = useGetDashboardSummary({
+    query: { queryKey: getGetDashboardSummaryQueryKey() },
+  });
+  const calendarBadge = dashboardSummary?.upcoming_events ?? 0;
 
   useEffect(() => {
     const id = setInterval(() => setAstClock(getASTClock()), 1000);

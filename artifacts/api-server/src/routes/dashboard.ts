@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth";
+import { isAdminRole } from "../auth";
 import { supabaseAdmin } from "../lib/supabase";
 import { cache, TTL } from "../lib/cache";
 
@@ -7,8 +8,16 @@ const router = Router();
 
 const DASHBOARD_KEY = "dashboard:summary";
 
+function isVisibleToUser(e: Record<string, unknown>, userId: string, admin: boolean) {
+  if (admin) return true;
+  const participants = Array.isArray(e.participants) ? e.participants : [];
+  return participants.includes(userId);
+}
+
 router.get("/dashboard/summary", requireAuth, async (req, res) => {
-  const cached = cache.get(DASHBOARD_KEY);
+  const admin = isAdminRole(req.user!.role);
+  const cacheKey = admin ? DASHBOARD_KEY : `${DASHBOARD_KEY}:${req.user!.id}`;
+  const cached = cache.get(cacheKey);
   if (cached) { res.json(cached); return; }
 
   try {
@@ -41,24 +50,30 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
         .limit(5),
       supabaseAdmin
         .from("calendar_events")
-        .select("id, title, title_ar, event_type, start_time, color")
+        .select("id, title, title_ar, event_type, start_time, color, participants")
         .gte("start_time", now)
         .lte("start_time", oneWeekLater)
         .order("start_time")
         .limit(5),
     ]);
 
+    const upcomingEvents = (upcomingEventsRes.data || []).map(e => e as Record<string, unknown>);
+    const visibleUpcoming = upcomingEvents.filter(ev => isVisibleToUser(ev, req.user!.id, admin));
+    const visibleUpcomingCount = admin
+      ? (upcomingCountRes.count || 0)
+      : visibleUpcoming.length;
+
     const result = {
       total_users: usersRes.count || 0,
       total_documents: documentsRes.count || 0,
       total_articles: articlesRes.count || 0,
-      upcoming_events: upcomingCountRes.count || 0,
+      upcoming_events: visibleUpcomingCount,
       recent_documents: recentDocsRes.data || [],
       recent_articles: recentArticlesRes.data || [],
-      upcoming_events_list: upcomingEventsRes.data || [],
+      upcoming_events_list: visibleUpcoming,
     };
 
-    cache.set(DASHBOARD_KEY, result, TTL.DASHBOARD);
+    cache.set(cacheKey, result, TTL.DASHBOARD);
     res.json(result);
   } catch (err) {
     req.log.error({ err }, "Failed to get dashboard summary");
