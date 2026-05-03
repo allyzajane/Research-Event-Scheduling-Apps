@@ -1047,6 +1047,92 @@ export const useUploadAvatar = <
 };
 
 /**
+ * @summary Upload or save drawn signature (PNG/JPG/SVG)
+ */
+export const getUploadSignatureUrl = () => {
+  return `/api/auth/upload-signature`;
+};
+
+export const uploadSignature = async (
+  uploadFileBody: UploadFileBody,
+  options?: RequestInit,
+): Promise<UploadResponse> => {
+  return customFetch<UploadResponse>(getUploadSignatureUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadFileBody),
+  });
+};
+
+export const getUploadSignatureMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadSignature>>,
+    TError,
+    { data: BodyType<UploadFileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof uploadSignature>>,
+  TError,
+  { data: BodyType<UploadFileBody> },
+  TContext
+> => {
+  const mutationKey = ["uploadSignature"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof uploadSignature>>,
+    { data: BodyType<UploadFileBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return uploadSignature(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UploadSignatureMutationResult = NonNullable<
+  Awaited<ReturnType<typeof uploadSignature>>
+>;
+export type UploadSignatureMutationBody = BodyType<UploadFileBody>;
+export type UploadSignatureMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload or save drawn signature (PNG/JPG/SVG)
+ */
+export const useUploadSignature = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof uploadSignature>>,
+    TError,
+    { data: BodyType<UploadFileBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof uploadSignature>>,
+  TError,
+  { data: BodyType<UploadFileBody> },
+  TContext
+> => {
+  return useMutation(getUploadSignatureMutationOptions(options));
+};
+
+/**
  * @summary List all users (admin only)
  */
 export const getListUsersUrl = (params?: ListUsersParams) => {

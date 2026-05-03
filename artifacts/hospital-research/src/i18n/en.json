@@ -278,7 +278,22 @@
     "saveFailed": "Failed to update profile",
     "saving": "Saving...",
     "changePhoto": "Change Photo",
-    "removePhoto": "Remove Photo"
+    "removePhoto": "Remove Photo",
+    "signatureTitle": "My Signature",
+    "signatureDesc": "Used for official documents and records.",
+    "signatureDraw": "Draw",
+    "signatureUpload": "Upload File",
+    "signatureDrawHint": "Sign inside the box using your mouse, finger, or stylus.",
+    "signatureUploadHint": "Upload a PNG, JPG, or SVG file of your signature (max 1 MB).",
+    "signatureClear": "Clear",
+    "signatureSave": "Save Signature",
+    "signatureSaving": "Saving...",
+    "signatureSaved": "Signature saved successfully.",
+    "signatureFailed": "Failed to save signature.",
+    "signatureRemove": "Remove",
+    "signatureNone": "No signature on file",
+    "signatureSet": "Signature on file",
+    "signatureUnsupported": "Only PNG, JPG, and SVG files are allowed."
   },
   "broadcast": {
     "title": "Broadcast Notification",

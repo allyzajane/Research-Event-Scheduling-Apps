@@ -278,7 +278,22 @@
     "saveFailed": "فشل تحديث الملف الشخصي",
     "saving": "جاري الحفظ...",
     "changePhoto": "تغيير الصورة",
-    "removePhoto": "حذف الصورة"
+    "removePhoto": "حذف الصورة",
+    "signatureTitle": "توقيعي",
+    "signatureDesc": "يُستخدم في الوثائق والسجلات الرسمية.",
+    "signatureDraw": "رسم",
+    "signatureUpload": "رفع ملف",
+    "signatureDrawHint": "وقّع داخل المربع باستخدام الماوس أو إصبعك أو القلم.",
+    "signatureUploadHint": "ارفع ملف PNG أو JPG أو SVG للتوقيع (حد أقصى 1 ميجا).",
+    "signatureClear": "مسح",
+    "signatureSave": "حفظ التوقيع",
+    "signatureSaving": "جاري الحفظ...",
+    "signatureSaved": "تم حفظ التوقيع بنجاح.",
+    "signatureFailed": "فشل حفظ التوقيع.",
+    "signatureRemove": "حذف",
+    "signatureNone": "لا يوجد توقيع مسجل",
+    "signatureSet": "يوجد توقيع مسجل",
+    "signatureUnsupported": "يُسمح فقط بملفات PNG و JPG و SVG."
   },
   "broadcast": {
     "title": "إشعار جماعي",

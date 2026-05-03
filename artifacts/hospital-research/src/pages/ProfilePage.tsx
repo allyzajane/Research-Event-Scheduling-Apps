@@ -3,14 +3,14 @@ import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
 import i18n from "i18next";
 import {
-  User, Mail, Shield, Building, Camera, Save, Pencil, X, Check,
+  User, Mail, Shield, Building, Camera, Save, Pencil, X, Check, PenLine,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Skeleton } from "@/components/ui/skeleton";
+import SignaturePanel from "@/components/SignaturePanel";
 import { cn } from "@/lib/utils";
 
 const roleColors: Record<string, string> = {
@@ -34,14 +34,15 @@ export default function ProfilePage() {
   const { user, session, updateUser } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  const [editing, setEditing] = useState(false);
-  const [form, setForm] = useState<ProfileForm>({
+  const [editing, setEditing]               = useState(false);
+  const [form, setForm]                     = useState<ProfileForm>({
     full_name: "", full_name_ar: "", department: "", avatar_url: "",
   });
-  const [saving, setSaving] = useState(false);
+  const [saving, setSaving]                 = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
-  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
-  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const [msg, setMsg]                       = useState<{ ok: boolean; text: string } | null>(null);
+  const [avatarPreview, setAvatarPreview]   = useState<string | null>(null);
+  const [signatureUrl, setSignatureUrl]     = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (user) {
@@ -52,6 +53,7 @@ export default function ProfilePage() {
         avatar_url:   user.avatar_url   || "",
       });
       setAvatarPreview(user.avatar_url || null);
+      setSignatureUrl((user as unknown as Record<string, unknown>).signature_url as string | null | undefined);
     }
   }, [user]);
 
@@ -133,7 +135,7 @@ export default function ProfilePage() {
       });
       setMsg({ ok: true, text: t("profile.saved") });
       setEditing(false);
-    } catch (e) {
+    } catch {
       setMsg({ ok: false, text: t("profile.saveFailed") });
     } finally {
       setSaving(false);
@@ -150,6 +152,11 @@ export default function ProfilePage() {
     setAvatarPreview(user.avatar_url || null);
     setMsg(null);
     setEditing(false);
+  };
+
+  const handleSignatureSaved = (url: string | null) => {
+    setSignatureUrl(url);
+    updateUser({ signature_url: url } as Parameters<typeof updateUser>[0]);
   };
 
   return (
@@ -306,6 +313,28 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
+          )}
+        </CardContent>
+      </Card>
+
+      {/* ── Signature Card ──────────────────────────────────────────── */}
+      <Card className="border-border">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <PenLine className="w-3.5 h-3.5 text-primary" />
+            </div>
+            {t("profile.signatureTitle")}
+          </CardTitle>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("profile.signatureDesc")}</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {session && (
+            <SignaturePanel
+              currentUrl={signatureUrl}
+              sessionToken={session.access_token}
+              onSaved={handleSignatureSaved}
+            />
           )}
         </CardContent>
       </Card>

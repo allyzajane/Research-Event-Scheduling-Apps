@@ -25,6 +25,8 @@ export interface UserProfile {
   /** @nullable */
   avatar_url?: string | null;
   /** @nullable */
+  signature_url?: string | null;
+  /** @nullable */
   department?: string | null;
   is_active: boolean;
   created_at: string;
@@ -42,6 +44,8 @@ export interface User {
   department?: string | null;
   /** @nullable */
   avatar_url?: string | null;
+  /** @nullable */
+  signature_url?: string | null;
   is_active: boolean;
   created_at: string;
   /** @nullable */

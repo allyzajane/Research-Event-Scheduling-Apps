@@ -4,7 +4,8 @@ import { supabaseAdmin } from "../lib/supabase";
 
 const router = Router();
 
-const AVATAR_SIZE_LIMIT = 2 * 1024 * 1024; // 2 MB
+const AVATAR_SIZE_LIMIT     = 2 * 1024 * 1024; // 2 MB
+const SIGNATURE_SIZE_LIMIT  = 1 * 1024 * 1024; // 1 MB
 
 router.get("/auth/me", requireAuth, async (req, res) => {
   try {
@@ -82,7 +83,7 @@ router.get("/auth/me", requireAuth, async (req, res) => {
 
 router.patch("/auth/me", requireAuth, async (req, res) => {
   const userId = req.user!.id;
-  const allowed = ["full_name", "full_name_ar", "department", "avatar_url"];
+  const allowed = ["full_name", "full_name_ar", "department", "avatar_url", "signature_url"];
   const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
   for (const field of allowed) {
@@ -163,6 +164,61 @@ router.post("/auth/upload-avatar", requireAuth, async (req, res) => {
     res.json({ url: avatarUrl, path: storagePath });
   } catch (err) {
     req.log.error({ err }, "Failed to upload avatar");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/auth/upload-signature", requireAuth, async (req, res) => {
+  const userId = req.user!.id;
+  const { file_base64, file_name, mime_type } = req.body as {
+    file_base64: string; file_name: string; mime_type: string;
+  };
+
+  if (!file_base64 || !file_name || !mime_type) {
+    res.status(400).json({ error: "Missing file data" });
+    return;
+  }
+
+  const ALLOWED_MIME = ["image/png", "image/jpeg", "image/jpg", "image/svg+xml"];
+  if (!ALLOWED_MIME.includes(mime_type)) {
+    res.status(400).json({ error: "Only PNG, JPG, and SVG files are allowed" });
+    return;
+  }
+
+  try {
+    const buffer = Buffer.from(file_base64, "base64");
+    if (buffer.byteLength > SIGNATURE_SIZE_LIMIT) {
+      res.status(400).json({ error: "Signature file exceeds 1 MB limit" });
+      return;
+    }
+
+    const ext = mime_type === "image/svg+xml" ? "svg" : (file_name.split(".").pop() || "png");
+    const storagePath = `signatures/${userId}.${ext}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("hospital-files")
+      .upload(storagePath, buffer, { contentType: mime_type, upsert: true });
+
+    if (uploadError) {
+      req.log.error({ error: uploadError }, "Failed to upload signature");
+      res.status(500).json({ error: "Upload failed" });
+      return;
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from("hospital-files")
+      .getPublicUrl(storagePath);
+
+    const signatureUrl = urlData.publicUrl;
+
+    await supabaseAdmin
+      .from("profiles")
+      .update({ signature_url: signatureUrl, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+
+    res.json({ url: signatureUrl, path: storagePath });
+  } catch (err) {
+    req.log.error({ err }, "Failed to upload signature");
     res.status(500).json({ error: "Internal server error" });
   }
 });

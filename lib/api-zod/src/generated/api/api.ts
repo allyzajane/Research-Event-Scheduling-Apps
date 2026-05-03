@@ -144,6 +144,7 @@ export const GetMeResponse = zod.object({
   full_name_ar: zod.string().nullish(),
   role: zod.string(),
   avatar_url: zod.string().nullish(),
+  signature_url: zod.string().nullish(),
   department: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
@@ -166,6 +167,7 @@ export const UpdateMeResponse = zod.object({
   full_name_ar: zod.string().nullish(),
   role: zod.string(),
   avatar_url: zod.string().nullish(),
+  signature_url: zod.string().nullish(),
   department: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
@@ -186,6 +188,20 @@ export const UploadAvatarResponse = zod.object({
 });
 
 /**
+ * @summary Upload or save drawn signature (PNG/JPG/SVG)
+ */
+export const UploadSignatureBody = zod.object({
+  file_base64: zod.string(),
+  file_name: zod.string(),
+  mime_type: zod.string(),
+});
+
+export const UploadSignatureResponse = zod.object({
+  url: zod.string(),
+  path: zod.string(),
+});
+
+/**
  * @summary List all users (admin only)
  */
 export const ListUsersQueryParams = zod.object({
@@ -201,6 +217,7 @@ export const ListUsersResponseItem = zod.object({
   role: zod.string(),
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
+  signature_url: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
   last_sign_in_at: zod.string().nullish(),
@@ -234,6 +251,7 @@ export const GetUserResponse = zod.object({
   role: zod.string(),
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
+  signature_url: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
   last_sign_in_at: zod.string().nullish(),
@@ -262,6 +280,7 @@ export const UpdateUserResponse = zod.object({
   role: zod.string(),
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
+  signature_url: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
   last_sign_in_at: zod.string().nullish(),
