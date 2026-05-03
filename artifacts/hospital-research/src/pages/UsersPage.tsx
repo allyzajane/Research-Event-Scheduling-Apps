@@ -317,37 +317,55 @@ export default function UsersPage() {
                       </Badge>
                     </td>
                     <td className="px-4 py-3">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="icon" className="h-7 w-7"><MoreHorizontal className="w-4 h-4" /></Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuItem onClick={() => setEditUser({ id: user.id, form: {
+                      <div className="flex items-center gap-0.5">
+                        {/* Edit */}
+                        <Button
+                          variant="ghost" size="icon" className="h-7 w-7"
+                          title={t("common.edit")}
+                          onClick={() => setEditUser({ id: user.id, form: {
                             email: user.email, password: "", full_name: user.full_name || "",
                             full_name_ar: user.full_name_ar || "", role: user.role,
                             department: user.department || "", is_active: user.is_active,
-                          }})}>
-                            <Pencil className="w-3.5 h-3.5 me-2" />{t("common.edit")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => openSetPassword(user)}>
-                            <KeyRound className="w-3.5 h-3.5 me-2" />{t("users.setPassword")}
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => setSigUser({
-                            id: user.id,
-                            name: user.full_name || user.email,
-                            email: user.email,
-                            signature_url: user.signature_url,
-                            signature_drawn_url: user.signature_drawn_url,
-                            signature_active_type: user.signature_active_type,
-                          })}>
-                            <PenLine className="w-3.5 h-3.5 me-2" />{t("adminSig.manageSignatures")}
-                          </DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(user.id)}>
-                            <Trash2 className="w-3.5 h-3.5 me-2" />{t("common.delete")}
-                          </DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
+                          }})}
+                        >
+                          <Pencil className="w-3.5 h-3.5" />
+                        </Button>
+
+                        {/* Secondary actions (password + signature) */}
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon" className="h-7 w-7">
+                              <MoreHorizontal className="w-4 h-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => openSetPassword(user)}>
+                              <KeyRound className="w-3.5 h-3.5 me-2" />{t("users.setPassword")}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setSigUser({
+                              id: user.id,
+                              name: user.full_name || user.email,
+                              email: user.email,
+                              signature_url: user.signature_url,
+                              signature_drawn_url: user.signature_drawn_url,
+                              signature_active_type: user.signature_active_type,
+                            })}>
+                              <PenLine className="w-3.5 h-3.5 me-2" />{t("adminSig.manageSignatures")}
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {/* Delete — blocked for own account */}
+                        <Button
+                          variant="ghost" size="icon"
+                          className="h-7 w-7 text-destructive hover:text-destructive hover:bg-destructive/10 disabled:opacity-30 disabled:cursor-not-allowed"
+                          disabled={user.id === session?.user?.id}
+                          title={user.id === session?.user?.id ? t("users.cannotDeleteSelf") : t("common.delete")}
+                          onClick={() => setDeleteId(user.id)}
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
                     </td>
                   </tr>
                 ))

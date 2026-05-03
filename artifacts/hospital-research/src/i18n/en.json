@@ -179,6 +179,7 @@
       "inactive": "Inactive",
       "byRole": "Users by Role"
     },
+    "cannotDeleteSelf": "You cannot delete your own account",
     "noUsers": "No users found",
     "searchPlaceholder": "Search by name or email..."
   },

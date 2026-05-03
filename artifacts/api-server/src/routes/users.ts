@@ -236,15 +236,22 @@ router.patch("/users/:id", requireAuth, requireRole("admin"), async (req, res) =
 });
 
 router.delete("/users/:id", requireAuth, requireRole("admin"), async (req, res) => {
+  const targetId = String(req.params.id);
+
+  if (req.user?.id === targetId) {
+    res.status(403).json({ error: "You cannot delete your own account" });
+    return;
+  }
+
   try {
     const { error: profileError } = await supabaseAdmin
       .from("profiles")
       .delete()
-      .eq("id", req.params.id);
+      .eq("id", targetId);
 
     if (profileError) throw profileError;
 
-    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(String(req.params.id));
+    const { error: authError } = await supabaseAdmin.auth.admin.deleteUser(targetId);
     if (authError) req.log.warn({ err: authError }, "Failed to delete auth user");
 
     res.json({ success: true, message: "User deleted" });
