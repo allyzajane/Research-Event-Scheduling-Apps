@@ -553,3 +553,26 @@ do $$ begin
     create policy "mas_service_all" on public.meeting_attendance_submissions using (true) with check (true);
   end if;
 end $$;
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 19. COLUMN PATCHES  (safe to re-run — adds missing columns)
+-- Run this if any column-not-found errors appear in the app.
+-- ─────────────────────────────────────────────────────────────
+
+alter table public.calendar_events
+  add column if not exists description    text,
+  add column if not exists description_ar text,
+  add column if not exists location       text,
+  add column if not exists venue          text,
+  add column if not exists organizer      text,
+  add column if not exists participants   jsonb        not null default '[]'::jsonb,
+  add column if not exists event_status   text         not null default 'active',
+  add column if not exists all_day        boolean      not null default false,
+  add column if not exists color          text         default '#2f9acb',
+  add column if not exists title_ar       text;
+
+alter table public.profiles
+  add column if not exists signature_url       text,
+  add column if not exists signature_drawn_url text,
+  add column if not exists signature_active_type text default 'uploaded';
