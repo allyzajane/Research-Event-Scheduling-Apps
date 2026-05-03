@@ -31,7 +31,7 @@ interface ProfileForm {
 
 export default function ProfilePage() {
   const { t } = useTranslation();
-  const { user, session, updateUser } = useAuth();
+  const { user, session, updateUser, refreshProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing]               = useState(false);
@@ -95,6 +95,8 @@ export default function ProfilePage() {
       setForm(prev => ({ ...prev, avatar_url: url }));
       setAvatarPreview(url);
       updateUser({ avatar_url: url });
+      // Re-fetch profile from DB so state stays in sync
+      await refreshProfile();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
     } finally {
@@ -126,13 +128,8 @@ export default function ProfilePage() {
         throw new Error(err.error || "Save failed");
       }
 
-      const updated = await r.json();
-      updateUser({
-        full_name:    updated.full_name    ?? undefined,
-        full_name_ar: updated.full_name_ar ?? undefined,
-        department:   updated.department   ?? undefined,
-        avatar_url:   updated.avatar_url   ?? undefined,
-      });
+      // Refresh the full profile from DB so every field reflects what was persisted
+      await refreshProfile();
       setMsg({ ok: true, text: t("profile.saved") });
       setEditing(false);
     } catch {
@@ -154,9 +151,11 @@ export default function ProfilePage() {
     setEditing(false);
   };
 
-  const handleSignatureSaved = (url: string | null) => {
+  const handleSignatureSaved = async (url: string | null) => {
     setSignatureUrl(url);
     updateUser({ signature_url: url } as Parameters<typeof updateUser>[0]);
+    // Re-fetch profile from DB so the signature persists across refreshes
+    await refreshProfile();
   };
 
   return (
