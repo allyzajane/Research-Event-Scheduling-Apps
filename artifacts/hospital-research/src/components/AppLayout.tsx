@@ -5,6 +5,7 @@ import { useAuth } from "@/contexts/AuthContext";
 import type { AuthUser } from "@/contexts/AuthContext";
 import { applyDirection } from "@/i18n/index";
 import i18n from "i18next";
+import { useGetLandingPage, useGetThemeSettings } from "@workspace/api-client-react";
 import {
   LayoutDashboard, Users, FileText, BookOpen, Calendar,
   Settings, User, LogOut, Menu, ChevronRight, Hospital,
@@ -164,21 +165,30 @@ interface SidebarContentProps {
   location: string;
   user: AuthUser | null;
   initials: string;
+  logoUrl?: string | null;
   onClose: () => void;
   onNavigate: (href: string) => void;
   onSignOut: () => void;
 }
 
 function SidebarContent({
-  visibleItems, location, user, initials, onClose, onNavigate, onSignOut,
+  visibleItems, location, user, initials, logoUrl, onClose, onNavigate, onSignOut,
 }: SidebarContentProps) {
   return (
     <div className="flex flex-col h-full">
       {/* Logo */}
       <div className="flex items-center gap-3 px-5 py-5 border-b border-sidebar-border">
-        <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
-          <Hospital className="w-5 h-5 text-white" />
-        </div>
+        {logoUrl ? (
+          <img
+            src={logoUrl}
+            alt="Hospital Logo"
+            className="w-9 h-9 rounded-xl object-contain bg-white p-0.5 flex-shrink-0"
+          />
+        ) : (
+          <div className="w-9 h-9 rounded-xl bg-primary flex items-center justify-center flex-shrink-0">
+            <Hospital className="w-5 h-5 text-white" />
+          </div>
+        )}
         <div className="min-w-0">
           <p className="text-sm font-semibold text-sidebar-foreground leading-tight truncate">
             {i18n.language === "ar" ? "مستشفى الطائف" : "Taif Hospital"}
@@ -233,6 +243,10 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [astClock, setAstClock] = useState(getASTClock);
 
+  const { data: landingData } = useGetLandingPage();
+  const { data: themeData } = useGetThemeSettings();
+  const logoUrl = landingData?.logo_url || themeData?.logo_url || null;
+
   useEffect(() => {
     const id = setInterval(() => setAstClock(getASTClock()), 1000);
     return () => clearInterval(id);
@@ -270,6 +284,7 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     location,
     user,
     initials,
+    logoUrl,
     onClose:    () => setSidebarOpen(false),
     onNavigate: handleNavigate,
     onSignOut:  signOut,

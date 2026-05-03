@@ -643,96 +643,156 @@ export default function CalendarPage() {
         import("jspdf-autotable"),
       ]);
       const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      const pageW = doc.internal.pageSize.width;
+      const pageW = doc.internal.pageSize.width; // 297 mm
 
       // Derive month label from current calendar view
       const monthLabel = dateRange
         ? new Date(dateRange.start).toLocaleString("en-US", { month: "long", year: "numeric" })
         : new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
 
+      // ── Fetch branding logo (optional — silently skipped if unavailable) ─
+      let logoDataUrl: string | null = null;
+      try {
+        const themeRes = await fetch("/api/settings/theme");
+        if (themeRes.ok) {
+          const themeJson = await themeRes.json();
+          const logoUrl: string | null = themeJson.logo_url || null;
+          if (logoUrl) {
+            const imgRes = await fetch(logoUrl);
+            if (imgRes.ok) {
+              const blob = await imgRes.blob();
+              logoDataUrl = await new Promise<string>((resolve, reject) => {
+                const reader = new FileReader();
+                reader.onload = () => resolve(reader.result as string);
+                reader.onerror = reject;
+                reader.readAsDataURL(blob);
+              });
+            }
+          }
+        }
+      } catch { /* logo is optional */ }
+
       // ── Header block ────────────────────────────────────────────────────────
+      const headerH = 28;
       doc.setFillColor(47, 154, 203);
-      doc.rect(0, 0, pageW, 22, "F");
+      doc.rect(0, 0, pageW, headerH, "F");
 
+      // Logo — left side of header, vertically centred
+      const logoSize = 18;
+      const logoMargin = 9;
+      const logoY = (headerH - logoSize) / 2;
+      if (logoDataUrl) {
+        const fmt = logoDataUrl.startsWith("data:image/png") ? "PNG"
+          : logoDataUrl.startsWith("data:image/svg") ? "SVG"
+          : "JPEG";
+        try {
+          doc.addImage(logoDataUrl, fmt, logoMargin, logoY, logoSize, logoSize);
+        } catch { /* skip if addImage fails (e.g. unsupported format) */ }
+      }
+
+      // Hospital name — always centred on the full page width
       doc.setTextColor(255, 255, 255);
-      doc.setFontSize(16);
       doc.setFont("helvetica", "bold");
-      doc.text("Taif Children's Hospital", pageW / 2, 9, { align: "center" });
+      doc.setFontSize(17);
+      doc.text("Taif Children's Hospital", pageW / 2, 12, { align: "center" });
 
-      doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Calendar Schedule — ${monthLabel}`, pageW / 2, 17, { align: "center" });
+      doc.setFontSize(10);
+      doc.text(`Calendar Schedule \u2014 ${monthLabel}`, pageW / 2, 21, { align: "center" });
 
       doc.setTextColor(0, 0, 0);
 
-      // ── Table ───────────────────────────────────────────────────────────────
+      // ── Duration helper ──────────────────────────────────────────────────────
+      const calcDuration = (ev: CalendarEvent): string => {
+        if (ev.all_day) return "All Day";
+        if (!ev.end_time) return "\u2014";
+        const diffMin = (new Date(ev.end_time).getTime() - new Date(ev.start_time).getTime()) / 60000;
+        if (diffMin <= 0) return "\u2014";
+        const h = Math.floor(diffMin / 60);
+        const m = Math.round(diffMin % 60);
+        if (h === 0) return `${m} min`;
+        if (m === 0) return `${h}h`;
+        return `${h}h ${m}m`;
+      };
+
+      // ── Table data ───────────────────────────────────────────────────────────
       const sorted = [...events].sort(
         (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
       );
 
+      // Column indices: 0=Date 1=Time 2=Duration 3=Event 4=Type 5=Organizer 6=Venue 7=Status 8=Desc
+      const STATUS_COL = 7;
+
       const rows = sorted.map(ev => {
         const ps = getPinStatus(ev);
         const statusLabel =
-          ps === "past" ? "Past"
-          : ev.event_status === "canceled" ? "Canceled"
-          : ev.event_status === "rescheduled" ? "Rescheduled"
+          ps === "past"                        ? "Past"
+          : ev.event_status === "canceled"     ? "Canceled"
+          : ev.event_status === "rescheduled"  ? "Rescheduled"
           : "Active";
 
         const timeStr = ev.all_day
           ? "All Day"
           : formatTimeAST(ev.start_time, "en") +
-            (ev.end_time ? ` – ${formatTimeAST(ev.end_time, "en")}` : "");
-
-        const descStr = ev.description || "";
+            (ev.end_time ? ` \u2013 ${formatTimeAST(ev.end_time, "en")}` : "");
 
         return [
           formatDateAST(ev.start_time, "en"),
           timeStr,
-          ev.title || "—",
+          calcDuration(ev),
+          ev.title || "\u2014",
           ev.event_type.charAt(0).toUpperCase() + ev.event_type.slice(1),
-          ev.organizer || "—",
-          ev.venue || "—",
+          ev.organizer || "\u2014",
+          ev.venue || "\u2014",
           statusLabel,
-          descStr,
+          ev.description || "",
         ];
       });
 
-      // Column indices: 0=Date 1=Time 2=Title 3=Type 4=Organizer 5=Venue 6=Status 7=Desc
       autoTable(doc, {
-        head: [["Date", "Time", "Event", "Type", "Organizer", "Venue", "Status", "Description"]],
+        head: [["Date", "Time", "Duration", "Event", "Type", "Organizer", "Venue", "Status", "Description"]],
         body: rows,
-        startY: 26,
-        styles: { fontSize: 8, cellPadding: 2.5, overflow: "linebreak" },
+        startY: headerH + 4,
+        margin: { left: 8, right: 8 },
+        styles: {
+          fontSize: 8,
+          font: "helvetica",
+          cellPadding: { top: 2.5, right: 3, bottom: 2.5, left: 3 },
+          overflow: "linebreak",
+          textColor: [30, 30, 30],
+          lineColor: [220, 220, 220],
+          lineWidth: 0.1,
+        },
         headStyles: {
           fillColor: [47, 154, 203],
-          textColor: 255,
+          textColor: [255, 255, 255],
           fontStyle: "bold",
           fontSize: 8.5,
+          halign: "left",
         },
         alternateRowStyles: { fillColor: [242, 249, 253] },
         columnStyles: {
-          0: { cellWidth: 26 },
-          1: { cellWidth: 32 },
-          2: { cellWidth: 55 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 26 },
-          5: { cellWidth: 40 },
-          6: { cellWidth: 20 },
-          7: { cellWidth: 60 },
+          0: { cellWidth: 24 },
+          1: { cellWidth: 30 },
+          2: { cellWidth: 18, halign: "center" },
+          3: { cellWidth: 48 },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 24 },
+          6: { cellWidth: 34 },
+          7: { cellWidth: 20, halign: "center" },
+          8: { cellWidth: "auto" as unknown as number },
         },
-        didDrawCell: (data) => {
-          // Colour the Status column (index 6)
-          if (data.section === "body" && data.column.index === 6) {
+        // Use didParseCell — runs BEFORE the cell is drawn so no double render
+        didParseCell: (data) => {
+          if (data.section === "body" && data.column.index === STATUS_COL) {
             const val = String(data.cell.raw);
             const colour: [number, number, number] =
               val === "Past"          ? [220, 38, 38]
               : val === "Canceled"    ? [217, 119, 6]
               : val === "Rescheduled" ? [14, 165, 233]
               : [34, 197, 94];
-            doc.setTextColor(...colour);
-            doc.setFontSize(8);
-            doc.text(val, data.cell.x + 2, data.cell.y + data.cell.height / 2 + 1);
-            doc.setTextColor(0, 0, 0);
+            data.cell.styles.textColor = colour;
+            data.cell.styles.fontStyle = "bold";
           }
         },
       });
@@ -742,10 +802,11 @@ export default function CalendarPage() {
       const pageH = doc.internal.pageSize.height;
       for (let i = 1; i <= pageCount; i++) {
         doc.setPage(i);
+        doc.setFont("helvetica", "normal");
         doc.setFontSize(7.5);
-        doc.setTextColor(150);
+        doc.setTextColor(150, 150, 150);
         doc.text(
-          `Generated on ${new Date().toLocaleDateString("en-US", { dateStyle: "full" })}  ·  Page ${i} of ${pageCount}`,
+          `Generated on ${new Date().toLocaleDateString("en-US", { dateStyle: "full" })}  \u00B7  Page ${i} of ${pageCount}`,
           pageW / 2, pageH - 5, { align: "center" }
         );
         doc.setTextColor(0, 0, 0);
