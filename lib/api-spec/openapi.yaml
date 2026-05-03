@@ -305,6 +305,80 @@ paths:
               schema:
                 $ref: "#/components/schemas/UploadResponse"
 
+  /roles:
+    get:
+      operationId: listRoles
+      tags: [roles]
+      summary: List all roles with user counts
+      responses:
+        "200":
+          description: Array of roles
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/Role"
+    post:
+      operationId: createRole
+      tags: [roles]
+      summary: Create a custom role (admin only)
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CreateRoleBody"
+      responses:
+        "201":
+          description: Created role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+
+  /roles/{id}:
+    patch:
+      operationId: updateRole
+      tags: [roles]
+      summary: Update a custom role label/color (admin only)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleBody"
+      responses:
+        "200":
+          description: Updated role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/Role"
+    delete:
+      operationId: deleteRole
+      tags: [roles]
+      summary: Delete a custom role (admin only, must have 0 users)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Success
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
   /users:
     get:
       operationId: listUsers
@@ -1694,6 +1768,50 @@ components:
           type: string
           minLength: 8
       required: [password]
+
+    Role:
+      type: object
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        label:
+          type: string
+        label_ar:
+          type: ["string", "null"]
+        color:
+          type: string
+        is_system:
+          type: boolean
+        user_count:
+          type: integer
+        created_at:
+          type: string
+      required: [id, name, label, color, is_system, created_at, user_count]
+
+    CreateRoleBody:
+      type: object
+      properties:
+        name:
+          type: string
+        label:
+          type: string
+        label_ar:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
+      required: [name, label]
+
+    UpdateRoleBody:
+      type: object
+      properties:
+        label:
+          type: ["string", "null"]
+        label_ar:
+          type: ["string", "null"]
+        color:
+          type: ["string", "null"]
 
     UpdateProfileBody:
       type: object

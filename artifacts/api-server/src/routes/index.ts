@@ -11,12 +11,14 @@ import dashboardRouter from "./dashboard";
 import notificationsRouter from "./notifications";
 import roleDashboardRouter from "./roleDashboard";
 import adminSignaturesRouter from "./adminSignatures";
+import rolesRouter from "./roles";
 
 const router: IRouter = Router();
 
 router.use(healthRouter);
 router.use(authRouter);
 router.use(adminSignaturesRouter);
+router.use(rolesRouter);
 router.use(usersRouter);
 router.use(landingPageRouter);
 router.use(documentsRouter);

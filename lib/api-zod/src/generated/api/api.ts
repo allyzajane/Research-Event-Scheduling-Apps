@@ -267,6 +267,67 @@ export const AdminUploadUserSignatureResponse = zod.object({
 });
 
 /**
+ * @summary List all roles with user counts
+ */
+export const ListRolesResponseItem = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  label: zod.string(),
+  label_ar: zod.string().nullish(),
+  color: zod.string(),
+  is_system: zod.boolean(),
+  user_count: zod.number(),
+  created_at: zod.string(),
+});
+export const ListRolesResponse = zod.array(ListRolesResponseItem);
+
+/**
+ * @summary Create a custom role (admin only)
+ */
+export const CreateRoleBody = zod.object({
+  name: zod.string(),
+  label: zod.string(),
+  label_ar: zod.string().nullish(),
+  color: zod.string().nullish(),
+});
+
+/**
+ * @summary Update a custom role label/color (admin only)
+ */
+export const UpdateRoleParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const UpdateRoleBody = zod.object({
+  label: zod.string().nullish(),
+  label_ar: zod.string().nullish(),
+  color: zod.string().nullish(),
+});
+
+export const UpdateRoleResponse = zod.object({
+  id: zod.string(),
+  name: zod.string(),
+  label: zod.string(),
+  label_ar: zod.string().nullish(),
+  color: zod.string(),
+  is_system: zod.boolean(),
+  user_count: zod.number(),
+  created_at: zod.string(),
+});
+
+/**
+ * @summary Delete a custom role (admin only, must have 0 users)
+ */
+export const DeleteRoleParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const DeleteRoleResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().nullish(),
+});
+
+/**
  * @summary List all users (admin only)
  */
 export const ListUsersQueryParams = zod.object({

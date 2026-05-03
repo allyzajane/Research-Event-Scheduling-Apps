@@ -461,6 +461,36 @@ export interface SetPasswordBody {
   password: string;
 }
 
+export interface Role {
+  id: string;
+  name: string;
+  label: string;
+  /** @nullable */
+  label_ar?: string | null;
+  color: string;
+  is_system: boolean;
+  user_count: number;
+  created_at: string;
+}
+
+export interface CreateRoleBody {
+  name: string;
+  label: string;
+  /** @nullable */
+  label_ar?: string | null;
+  /** @nullable */
+  color?: string | null;
+}
+
+export interface UpdateRoleBody {
+  /** @nullable */
+  label?: string | null;
+  /** @nullable */
+  label_ar?: string | null;
+  /** @nullable */
+  color?: string | null;
+}
+
 export interface UpdateProfileBody {
   /** @nullable */
   full_name?: string | null;

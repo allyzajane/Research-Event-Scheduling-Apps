@@ -6,13 +6,15 @@ import {
   useCreateUser, useUpdateUser, useDeleteUser,
   useGetUserStats, getGetUserStatsQueryKey,
   useSetUserPassword,
+  useListRoles, getListRolesQueryKey,
 } from "@workspace/api-client-react";
+import RolesDialog, { ROLE_COLOR_MAP } from "@/components/RolesDialog";
 import { useQueryClient } from "@tanstack/react-query";
 import i18n from "i18next";
 import {
   UserPlus, Search, Pencil, Trash2, MoreHorizontal, Users, KeyRound,
   CheckCircle2, AlertCircle, Eye, EyeOff, RefreshCw, Copy, Check,
-  ShieldCheck, PenLine,
+  ShieldCheck, PenLine, Shield,
 } from "lucide-react";
 import AdminSignatureDialog from "@/components/AdminSignatureDialog";
 import { Button } from "@/components/ui/button";
@@ -28,16 +30,19 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 
-const ROLES = ["admin", "ceo", "director", "doctor", "nurse", "staff"];
+// Helpers — resolve role display info from the API roles list
+type RoleData = { id: string; name: string; label: string; label_ar?: string | null; color: string; is_system: boolean; user_count: number; created_at: string; };
 
-const roleColors: Record<string, string> = {
-  admin:    "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
-  ceo:      "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200",
-  director: "bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-200",
-  doctor:   "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
-  nurse:    "bg-pink-100 text-pink-800 dark:bg-pink-900 dark:text-pink-200",
-  staff:    "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
-};
+function getRoleLabel(roles: RoleData[] | undefined, roleName: string, isAr: boolean): string {
+  const found = roles?.find(r => r.name === roleName);
+  if (found) return (isAr && found.label_ar) ? found.label_ar : found.label;
+  return roleName;
+}
+
+function getRoleBadgeClass(roles: RoleData[] | undefined, roleName: string): string {
+  const found = roles?.find(r => r.name === roleName);
+  return (ROLE_COLOR_MAP[found?.color ?? "gray"] ?? ROLE_COLOR_MAP.gray).badge;
+}
 
 interface UserForm {
   email: string; password: string; full_name: string;
@@ -117,6 +122,8 @@ export default function UsersPage() {
   const [assignStatus, setAssignStatus] = useState<{ ok: boolean; msg: string } | null>(null);
   const [assigning, setAssigning]     = useState(false);
 
+  const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+
   const params: Record<string, string> = {};
   if (roleFilter !== "all") params.role = roleFilter;
   if (search) params.search = search;
@@ -125,6 +132,8 @@ export default function UsersPage() {
     query: { queryKey: getListUsersQueryKey(params) },
   });
   const { data: stats } = useGetUserStats({ query: { queryKey: getGetUserStatsQueryKey() } });
+  const { data: rolesData } = useListRoles({ query: { queryKey: getListRolesQueryKey() } });
+  const roles = rolesData as RoleData[] | undefined;
   const createUser   = useCreateUser();
   const updateUser   = useUpdateUser();
   const deleteUser   = useDeleteUser();
@@ -214,9 +223,14 @@ export default function UsersPage() {
           <h1 className="text-2xl font-bold text-foreground">{t("users.title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("users.subtitle")}</p>
         </div>
-        <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
-          <UserPlus className="w-4 h-4" /> {t("users.createUser")}
-        </Button>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={() => setRolesDialogOpen(true)} className="gap-2">
+            <Shield className="w-4 h-4" /> {t("users.rolesManager.manageRoles")}
+          </Button>
+          <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
+            <UserPlus className="w-4 h-4" /> {t("users.createUser")}
+          </Button>
+        </div>
       </div>
 
       {/* Stats */}
@@ -237,8 +251,8 @@ export default function UsersPage() {
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{t("users.stats.byRole")}</p>
           <div className="flex flex-wrap gap-1">
             {stats?.by_role?.slice(0, 3).map(r => (
-              <Badge key={r.role} className={cn("text-xs px-1.5 py-0", roleColors[r.role])}>
-                {r.role}: {r.count}
+              <Badge key={r.role} className={cn("text-xs px-1.5 py-0", getRoleBadgeClass(roles, r.role))}>
+                {getRoleLabel(roles, r.role, isAr)}: {r.count}
               </Badge>
             ))}
           </div>
@@ -255,7 +269,7 @@ export default function UsersPage() {
           <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("common.all")}</SelectItem>
-            {ROLES.map(r => <SelectItem key={r} value={r}>{t(`users.roles.${r}`)}</SelectItem>)}
+            {(roles ?? []).map(r => <SelectItem key={r.name} value={r.name}>{getRoleLabel(roles, r.name, isAr)}</SelectItem>)}
           </SelectContent>
         </Select>
       </div>
@@ -294,7 +308,7 @@ export default function UsersPage() {
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{user.email}</td>
                     <td className="px-4 py-3">
-                      <Badge className={cn("text-xs", roleColors[user.role])}>{t(`users.roles.${user.role}`)}</Badge>
+                      <Badge className={cn("text-xs", getRoleBadgeClass(roles, user.role))}>{getRoleLabel(roles, user.role, isAr)}</Badge>
                     </td>
                     <td className="px-4 py-3 text-sm text-muted-foreground">{user.department || "—"}</td>
                     <td className="px-4 py-3">
@@ -376,7 +390,7 @@ export default function UsersPage() {
                 <Label>{t("common.role")}</Label>
                 <Select value={form.role} onValueChange={v => setForm({...form, role: v})}>
                   <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>{ROLES.map(r => <SelectItem key={r} value={r}>{t(`users.roles.${r}`)}</SelectItem>)}</SelectContent>
+                  <SelectContent>{(roles ?? []).map(r => <SelectItem key={r.name} value={r.name}>{getRoleLabel(roles, r.name, isAr)}</SelectItem>)}</SelectContent>
                 </Select>
               </div>
               <div className="space-y-1.5">
@@ -415,7 +429,7 @@ export default function UsersPage() {
                   <Label>{t("common.role")}</Label>
                   <Select value={editUser.form.role} onValueChange={v => setEditUser({...editUser, form: {...editUser.form, role: v}})}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
-                    <SelectContent>{ROLES.map(r => <SelectItem key={r} value={r}>{t(`users.roles.${r}`)}</SelectItem>)}</SelectContent>
+                    <SelectContent>{(roles ?? []).map(r => <SelectItem key={r.name} value={r.name}>{getRoleLabel(roles, r.name, isAr)}</SelectItem>)}</SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-1.5">
@@ -607,6 +621,15 @@ export default function UsersPage() {
           }}
         />
       )}
+
+      {/* ── Roles Manager Dialog ─────────────────────────────────────── */}
+      <RolesDialog
+        open={rolesDialogOpen}
+        onClose={() => {
+          setRolesDialogOpen(false);
+          qc.invalidateQueries({ queryKey: getListRolesQueryKey() });
+        }}
+      />
     </div>
   );
 }

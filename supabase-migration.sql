@@ -435,3 +435,37 @@ alter table public.profiles
   add column if not exists signature_drawn_url    text,
   add column if not exists signature_active_type  text default 'uploaded'
     check (signature_active_type in ('uploaded', 'drawn'));
+
+-- ─────────────────────────────────────────────────────────────
+-- 16. CUSTOM ROLES TABLE
+-- Run this in Supabase SQL editor to enable custom role management.
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.roles (
+  id           uuid primary key default gen_random_uuid(),
+  name         text not null unique
+               check (name ~ '^[a-z][a-z0-9_]*$' and length(name) >= 2),
+  label        text not null,
+  label_ar     text,
+  color        text not null default 'gray'
+               check (color in ('teal','purple','indigo','blue','pink','gray','orange','red','emerald','amber','cyan','violet')),
+  is_system    boolean not null default false,
+  created_at   timestamptz not null default now()
+);
+
+-- Seed the six built-in system roles
+insert into public.roles (name, label, label_ar, color, is_system) values
+  ('admin',    'Administrator',  'مدير النظام',         'teal',   true),
+  ('ceo',      'CEO',            'الرئيس التنفيذي',     'purple', true),
+  ('director', 'Director',       'المدير',              'indigo', true),
+  ('doctor',   'Doctor',         'طبيب',                'blue',   true),
+  ('nurse',    'Nurse',          'ممرض/ة',              'pink',   true),
+  ('staff',    'Staff',          'موظف',                'gray',   true)
+on conflict (name) do nothing;
+
+alter table public.roles enable row level security;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where policyname = 'public_read_roles' and tablename = 'roles') then
+    create policy "public_read_roles" on public.roles for select using (true);
+  end if;
+end $$;
