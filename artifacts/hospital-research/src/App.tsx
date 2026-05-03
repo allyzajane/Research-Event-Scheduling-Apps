@@ -32,6 +32,7 @@ const UsersPage     = lazy(() => import("@/pages/UsersPage"));
 const DocumentsPage = lazy(() => import("@/pages/DocumentsPage"));
 const ArticlesPage  = lazy(() => import("@/pages/ArticlesPage"));
 const CalendarPage  = lazy(() => import("@/pages/CalendarPage"));
+const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
 const SettingsPage  = lazy(() => import("@/pages/SettingsPage"));
 const ProfilePage           = lazy(() => import("@/pages/ProfilePage"));
 const NotificationBroadcastPage = lazy(() => import("@/pages/NotificationBroadcastPage"));
@@ -91,6 +92,12 @@ function Router() {
         <Route path="/calendar">
           <ProtectedRoute>
             <AppLayout><CalendarPage /></AppLayout>
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/attendance">
+          <ProtectedRoute>
+            <AppLayout><AttendancePage /></AppLayout>
           </ProtectedRoute>
         </Route>
 
