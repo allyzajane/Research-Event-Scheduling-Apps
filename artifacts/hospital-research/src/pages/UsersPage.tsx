@@ -10,12 +10,12 @@ import {
 } from "@workspace/api-client-react";
 import RolesDialog, { ROLE_COLOR_MAP } from "@/components/RolesDialog";
 import { getGreeting } from "@/lib/ast";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import i18n from "i18next";
 import {
   UserPlus, Search, Pencil, Trash2, MoreHorizontal, Users, KeyRound,
   CheckCircle2, AlertCircle, Eye, EyeOff, RefreshCw, Copy, Check,
-  ShieldCheck, PenLine, Shield, Clock,
+  ShieldCheck, PenLine, Shield, Clock, Wifi, ChevronDown, ChevronUp,
 } from "lucide-react";
 import { timeAgoAST } from "@/lib/ast";
 import AdminSignatureDialog from "@/components/AdminSignatureDialog";
@@ -23,6 +23,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
@@ -42,7 +43,242 @@ function getPresence(lastSeen: string | null | undefined, isAr: boolean) {
   return           { dot: "bg-gray-400 dark:bg-gray-500", pulse: false, label: timeAgoAST(lastSeen, isAr) };
 }
 
-// Helpers — resolve role display info from the API roles list
+// ── Role avatar colours ───────────────────────────────────────────────────────
+const ROLE_AVATAR_BG: Record<string, string> = {
+  admin:    "bg-teal-500",
+  ceo:      "bg-purple-500",
+  director: "bg-indigo-500",
+  doctor:   "bg-blue-500",
+  nurse:    "bg-pink-500",
+  staff:    "bg-gray-400",
+};
+
+// ── Online roster data shape ─────────────────────────────────────────────────
+interface OnlineUser {
+  id: string;
+  full_name: string | null;
+  full_name_ar: string | null;
+  role: string;
+  avatar_url: string | null;
+}
+
+// ── Who's Online panel ───────────────────────────────────────────────────────
+interface OnlineRosterPanelProps {
+  session: { access_token: string } | null;
+  onFilterOnline: () => void;
+  onlineOnly: boolean;
+}
+
+function OnlineRosterPanel({ session, onFilterOnline, onlineOnly }: OnlineRosterPanelProps) {
+  const isAr = i18n.language === "ar";
+  const [collapsed, setCollapsed] = useState(false);
+
+  const { data, isLoading, isFetching, dataUpdatedAt, refetch } = useQuery<{
+    count: number; users: OnlineUser[]; column_missing?: boolean;
+  }>({
+    queryKey: ["online-roster"],
+    queryFn: async () => {
+      const r = await fetch("/api/dashboard/online-count", {
+        headers: { Authorization: `Bearer ${session!.access_token}` },
+      });
+      if (!r.ok) throw new Error("Failed");
+      return r.json();
+    },
+    enabled: !!session,
+    refetchInterval: 30_000,
+    staleTime: 20_000,
+  });
+
+  const count = data?.count ?? 0;
+  const users = data?.users ?? [];
+  const columnMissing = data?.column_missing;
+
+  const lastUpdated = dataUpdatedAt
+    ? new Intl.DateTimeFormat(isAr ? "ar-SA" : "en-GB", {
+        timeZone: "Asia/Riyadh",
+        hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+      }).format(new Date(dataUpdatedAt))
+    : null;
+
+  function userInitials(u: OnlineUser) {
+    const name = isAr && u.full_name_ar ? u.full_name_ar : (u.full_name ?? "");
+    return name ? name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() : "?";
+  }
+  function userName(u: OnlineUser) {
+    return (isAr && u.full_name_ar ? u.full_name_ar : u.full_name) ?? "—";
+  }
+
+  return (
+    <Card className="border-border overflow-hidden">
+      {/* ── Header ────────────────────────────────────────────────────────── */}
+      <div
+        className="flex items-center justify-between px-4 py-3 border-b border-border bg-card cursor-pointer select-none"
+        onClick={() => setCollapsed(c => !c)}
+      >
+        <div className="flex items-center gap-3">
+          {/* Live pulse */}
+          <span className="relative flex h-3 w-3 flex-shrink-0">
+            {count > 0 && (
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+            )}
+            <span className={cn(
+              "relative inline-flex rounded-full h-3 w-3",
+              count > 0 ? "bg-emerald-500" : "bg-gray-300 dark:bg-gray-600",
+            )} />
+          </span>
+
+          <div>
+            <p className="text-sm font-semibold text-foreground leading-tight">
+              {isAr ? "من هو متصل الآن" : "Who's Online"}
+            </p>
+            {lastUpdated && (
+              <p className="text-[11px] text-muted-foreground leading-tight">
+                {isAr ? `آخر تحديث: ${lastUpdated}` : `Updated ${lastUpdated} KSA`}
+              </p>
+            )}
+          </div>
+
+          {/* Count bubble */}
+          {!isLoading && (
+            <span className={cn(
+              "inline-flex items-center justify-center min-w-[1.75rem] h-6 px-2 rounded-full text-xs font-bold tabular-nums",
+              count > 0
+                ? "bg-emerald-500 text-white shadow-sm"
+                : "bg-muted text-muted-foreground",
+            )}>
+              {count}
+            </span>
+          )}
+          {isLoading && <Skeleton className="h-6 w-8 rounded-full" />}
+        </div>
+
+        <div className="flex items-center gap-2">
+          {/* "Show online only" toggle */}
+          {count > 0 && !collapsed && (
+            <button
+              onClick={e => { e.stopPropagation(); onFilterOnline(); }}
+              className={cn(
+                "flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold border transition-colors",
+                onlineOnly
+                  ? "bg-emerald-500 text-white border-emerald-500"
+                  : "bg-transparent text-muted-foreground border-border hover:border-emerald-500 hover:text-emerald-600",
+              )}
+            >
+              <Wifi className="w-3 h-3" />
+              {isAr ? "عرض المتصلين فقط" : "Online only"}
+            </button>
+          )}
+
+          {/* Refresh */}
+          <button
+            onClick={e => { e.stopPropagation(); void refetch(); }}
+            className={cn(
+              "w-7 h-7 flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted transition-colors",
+              isFetching && "animate-spin text-primary",
+            )}
+            title={isAr ? "تحديث" : "Refresh"}
+          >
+            <RefreshCw className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Collapse chevron */}
+          <span className="text-muted-foreground">
+            {collapsed ? <ChevronDown className="w-4 h-4" /> : <ChevronUp className="w-4 h-4" />}
+          </span>
+        </div>
+      </div>
+
+      {/* ── Body ──────────────────────────────────────────────────────────── */}
+      {!collapsed && (
+        <CardContent className="p-0">
+          {columnMissing ? (
+            /* DB column not yet migrated */
+            <div className="px-4 py-5 flex items-center gap-3 text-sm text-muted-foreground">
+              <Clock className="w-4 h-4 flex-shrink-0 text-amber-500" />
+              <span>
+                {isAr
+                  ? "يرجى إضافة عمود last_seen_at إلى جدول profiles لتفعيل هذه الميزة."
+                  : "Run the SQL migration to enable live presence: ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS last_seen_at timestamptz;"}
+              </span>
+            </div>
+          ) : isLoading ? (
+            /* Skeleton */
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3 p-4">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border">
+                  <Skeleton className="w-10 h-10 rounded-full" />
+                  <Skeleton className="h-3 w-20" />
+                  <Skeleton className="h-2.5 w-14" />
+                </div>
+              ))}
+            </div>
+          ) : count === 0 ? (
+            /* Empty state */
+            <div className="flex flex-col items-center justify-center py-8 gap-2 text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center">
+                <Users className="w-5 h-5 text-muted-foreground opacity-50" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">
+                {isAr ? "لا أحد متصل حالياً" : "No staff online right now"}
+              </p>
+              <p className="text-xs text-muted-foreground/60">
+                {isAr ? "يتحدث تلقائياً كل ٣٠ ثانية" : "Auto-refreshes every 30 seconds"}
+              </p>
+            </div>
+          ) : (
+            /* Online user grid */
+            <div className="p-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-3">
+                {users.map(u => {
+                  const initials = userInitials(u);
+                  const name     = userName(u);
+                  return (
+                    <div
+                      key={u.id}
+                      className="flex flex-col items-center gap-2 p-3 rounded-xl border border-border hover:border-primary/40 hover:bg-primary/[0.03] transition-all text-center"
+                    >
+                      {/* Avatar with green presence ring */}
+                      <div className="relative">
+                        <Avatar className="w-10 h-10 ring-2 ring-emerald-500/30">
+                          <AvatarImage src={u.avatar_url ?? undefined} alt={name} className="object-cover" />
+                          <AvatarFallback className={cn("text-xs font-bold text-white", ROLE_AVATAR_BG[u.role] ?? "bg-gray-400")}>
+                            {initials}
+                          </AvatarFallback>
+                        </Avatar>
+                        {/* Green dot */}
+                        <span className="absolute bottom-0 end-0 w-3 h-3 rounded-full bg-emerald-500 ring-2 ring-background" />
+                      </div>
+
+                      {/* Name */}
+                      <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2 w-full">
+                        {name}
+                      </p>
+
+                      {/* Role pill */}
+                      <span className={cn(
+                        "inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-medium text-white leading-none",
+                        ROLE_AVATAR_BG[u.role] ?? "bg-gray-400",
+                      )}>
+                        {u.role}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Footer — refresh hint */}
+              <p className={cn("text-[11px] text-muted-foreground mt-3", isAr ? "text-end" : "text-start")}>
+                {isAr ? "✓ نشط في آخر ٥ دقائق · يتحدث كل ٣٠ ث" : "✓ Active within last 5 minutes · refreshes every 30s"}
+              </p>
+            </div>
+          )}
+        </CardContent>
+      )}
+    </Card>
+  );
+}
+
+// ── Helpers — resolve role display info from the API roles list ───────────────
 type RoleData = { id: string; name: string; label: string; label_ar?: string | null; color: string; is_system: boolean; user_count: number; created_at: string; };
 
 function getRoleLabel(roles: RoleData[] | undefined, roleName: string, isAr: boolean): string {
@@ -135,6 +371,7 @@ export default function UsersPage() {
   const [assigning, setAssigning]     = useState(false);
 
   const [rolesDialogOpen, setRolesDialogOpen] = useState(false);
+  const [onlineOnly, setOnlineOnly]           = useState(false);
 
   const params: Record<string, string> = {};
   if (roleFilter !== "all") params.role = roleFilter;
@@ -274,8 +511,15 @@ export default function UsersPage() {
         </CardContent></Card>
       </div>
 
+      {/* Who's Online panel */}
+      <OnlineRosterPanel
+        session={session}
+        onlineOnly={onlineOnly}
+        onFilterOnline={() => setOnlineOnly(o => !o)}
+      />
+
       {/* Filters */}
-      <div className="flex gap-3 flex-wrap">
+      <div className="flex gap-3 flex-wrap items-center">
         <div className="relative flex-1 min-w-48">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("users.searchPlaceholder")} className="ps-10" />
@@ -287,6 +531,19 @@ export default function UsersPage() {
             {(roles ?? []).map(r => <SelectItem key={r.name} value={r.name}>{getRoleLabel(roles, r.name, isAr)}</SelectItem>)}
           </SelectContent>
         </Select>
+        {/* Online-only pill toggle */}
+        <button
+          onClick={() => setOnlineOnly(o => !o)}
+          className={cn(
+            "flex items-center gap-2 px-3 py-2 rounded-md border text-sm font-medium transition-colors h-10 flex-shrink-0",
+            onlineOnly
+              ? "bg-emerald-500 text-white border-emerald-500 shadow-sm"
+              : "bg-card text-muted-foreground border-border hover:border-emerald-400 hover:text-emerald-600",
+          )}
+        >
+          <span className={cn("w-2 h-2 rounded-full flex-shrink-0", onlineOnly ? "bg-white animate-pulse" : "bg-gray-300")} />
+          {isAr ? "متصل فقط" : "Online only"}
+        </button>
       </div>
 
       {/* Table */}
@@ -305,8 +562,15 @@ export default function UsersPage() {
                 [...Array(5)].map((_, i) => (
                   <tr key={i}><td colSpan={7} className="px-4 py-3"><Skeleton className="h-5 w-full" /></td></tr>
                 ))
-              ) : users?.length ? (
-                users.map(user => (
+              ) : (() => {
+                const displayUsers = onlineOnly
+                  ? (users ?? []).filter(u => {
+                      const ls = (u as unknown as Record<string, unknown>).last_seen_at as string | null | undefined;
+                      return ls && (Date.now() - new Date(ls).getTime()) < 5 * 60_000;
+                    })
+                  : (users ?? []);
+                return displayUsers.length ? (
+                  displayUsers.map(user => (
                   <tr key={user.id} className="hover:bg-muted/30 transition-colors">
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-3">
@@ -395,13 +659,14 @@ export default function UsersPage() {
                       </div>
                     </td>
                   </tr>
-                ))
-              ) : (
-                <tr><td colSpan={7} className="py-16 text-center text-muted-foreground">
-                  <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                  <p>{t("users.noUsers")}</p>
-                </td></tr>
-              )}
+                  ))
+                ) : (
+                  <tr><td colSpan={7} className="py-16 text-center text-muted-foreground">
+                    <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
+                    <p>{onlineOnly ? (isAr ? "لا أحد متصل حالياً" : "No staff online right now") : t("users.noUsers")}</p>
+                  </td></tr>
+                );
+              })()}
             </tbody>
           </table>
         </div>
