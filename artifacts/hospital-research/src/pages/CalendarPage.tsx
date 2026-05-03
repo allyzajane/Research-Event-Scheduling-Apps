@@ -677,25 +677,38 @@ export default function CalendarPage() {
       doc.setFillColor(47, 154, 203);
       doc.rect(0, 0, pageW, headerH, "F");
 
-      // Logo — left side of header, vertically centred
+      // ── Centered logo + hospital name group ─────────────────────────────────
       const logoSize = 18;
-      const logoMargin = 9;
-      const logoY = (headerH - logoSize) / 2;
-      if (logoDataUrl) {
-        const fmt = logoDataUrl.startsWith("data:image/png") ? "PNG"
-          : logoDataUrl.startsWith("data:image/svg") ? "SVG"
-          : "JPEG";
-        try {
-          doc.addImage(logoDataUrl, fmt, logoMargin, logoY, logoSize, logoSize);
-        } catch { /* skip if addImage fails (e.g. unsupported format) */ }
-      }
+      const logoGap  = 4;  // mm between logo and text
+      const titleStr = "Taif Children's Hospital";
 
-      // Hospital name — always centred on the full page width
-      doc.setTextColor(255, 255, 255);
+      // Measure title width at the font we'll use
       doc.setFont("helvetica", "bold");
       doc.setFontSize(17);
-      doc.text("Taif Children's Hospital", pageW / 2, 12, { align: "center" });
+      const titleW = doc.getTextWidth(titleStr);
 
+      // Total group width: logo (only when present) + gap + title
+      const hasLogo = Boolean(logoDataUrl);
+      const groupW  = hasLogo ? logoSize + logoGap + titleW : titleW;
+      const groupX  = pageW / 2 - groupW / 2;   // left edge of group
+
+      // Draw logo at the left of the group, vertically centred
+      if (hasLogo) {
+        const logoY = (headerH - logoSize) / 2;
+        const fmt = logoDataUrl!.startsWith("data:image/png") ? "PNG"
+          : logoDataUrl!.startsWith("data:image/svg") ? "SVG"
+          : "JPEG";
+        try {
+          doc.addImage(logoDataUrl!, fmt, groupX, logoY, logoSize, logoSize);
+        } catch { /* skip on unsupported format */ }
+      }
+
+      // Hospital name — right of logo (or centred when no logo)
+      const textX = hasLogo ? groupX + logoSize + logoGap : pageW / 2;
+      doc.setTextColor(255, 255, 255);
+      doc.text(titleStr, textX, 12, { align: hasLogo ? "left" : "center" });
+
+      // Subtitle — always page-centred
       doc.setFont("helvetica", "normal");
       doc.setFontSize(10);
       doc.text(`Calendar Schedule \u2014 ${monthLabel}`, pageW / 2, 21, { align: "center" });
