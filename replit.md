@@ -37,6 +37,8 @@ Bilingual (English + Arabic, RTL) full-stack web app for hospital research manag
 - Calendar events (FullCalendar)
 - Admin settings: logo/background upload, theme colors, landing page sections
 - Profile page
+- Daily Attendance (clock-in/out, stats, CSV export, date range filter)
+- Meeting Attendance Forms (admin creates time-windowed forms linked to calendar events; staff submit with auto-populated signature; sequential submission numbering; live countdown timer; admin remarks per submission)
 
 ## Database Setup (Required First-Time)
 
@@ -45,7 +47,10 @@ Tables do NOT exist in Supabase by default. Run `supabase-migration.sql` in the 
 2. Select your project → SQL Editor
 3. Paste contents of `supabase-migration.sql` and run it
 
-Tables created: `profiles`, `landing_page_config`, `landing_page_sections`, `documents`, `articles`, `calendar_events`, `theme_settings`
+Tables created: `profiles`, `landing_page_config`, `landing_page_sections`, `documents`, `articles`, `calendar_events`, `theme_settings`, `attendance`, `meeting_attendance_forms`, `meeting_attendance_submissions`
+
+**Section 17** adds the `attendance` table (daily clock-in/out).
+**Section 18** adds `meeting_attendance_forms` and `meeting_attendance_submissions` for the Meeting Attendance Form system.
 
 ## First Admin User
 

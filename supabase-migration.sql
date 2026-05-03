@@ -504,3 +504,52 @@ do $$ begin
       );
   end if;
 end $$;
+
+-- ─────────────────────────────────────────────────────────────
+-- Section 18: Meeting Attendance Forms
+-- Run this in Supabase SQL editor to enable Meeting Attendance Forms.
+-- ─────────────────────────────────────────────────────────────
+
+create table if not exists public.meeting_attendance_forms (
+  id           uuid        primary key default gen_random_uuid(),
+  event_id     uuid        references public.calendar_events(id) on delete set null,
+  meeting_no   integer     not null,
+  is_active    boolean     not null default true,
+  window_start timestamptz,
+  window_end   timestamptz,
+  created_by   uuid        references public.profiles(id) on delete set null,
+  created_at   timestamptz not null default now(),
+  updated_at   timestamptz not null default now()
+);
+
+create index if not exists maf_event_id_idx   on public.meeting_attendance_forms(event_id);
+create index if not exists maf_created_at_idx on public.meeting_attendance_forms(created_at desc);
+
+alter table public.meeting_attendance_forms enable row level security;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where policyname = 'maf_service_all' and tablename = 'meeting_attendance_forms') then
+    create policy "maf_service_all" on public.meeting_attendance_forms using (true) with check (true);
+  end if;
+end $$;
+
+create table if not exists public.meeting_attendance_submissions (
+  id            uuid        primary key default gen_random_uuid(),
+  form_id       uuid        not null references public.meeting_attendance_forms(id) on delete cascade,
+  user_id       uuid        not null references public.profiles(id) on delete cascade,
+  submission_no integer     not null,
+  signature_url text,
+  submitted_at  timestamptz not null default now(),
+  remarks       text,
+  unique(form_id, user_id)
+);
+
+create index if not exists mas_form_id_idx on public.meeting_attendance_submissions(form_id);
+
+alter table public.meeting_attendance_submissions enable row level security;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where policyname = 'mas_service_all' and tablename = 'meeting_attendance_submissions') then
+    create policy "mas_service_all" on public.meeting_attendance_submissions using (true) with check (true);
+  end if;
+end $$;

@@ -1,0 +1,43 @@
+Build a fully structured Attendance Form inside the Attendance Page that users can fill out only when the form is activated by the admin or within the configured time window. The form auto-populates event details from the selected Meeting/Event and user profile data — minimizing manual input and ensuring data accuracy. A sequential attendance number is auto-assigned per submission, and a Remarks field is reserved exclusively for admin editing.
+
+Attendees open the Attendance form during an active window, see all event and personal details pre-filled with zero manual input, submit with one click, and receive an immediate numbered confirmation — while admins retain full control over form access timing and can annotate any attendance record with private remarks.
+
+
+
+1. Form Access Gate (Time-Restricted + Admin Controlled)
+
+Condition:
+- Form is Active AND current time is within the set time window:  Form is fully fillable and submittable
+- Form is Active but time window has not started yet: "Attendance opens at [HH:MM]. Please return then."
+- Form is Active but time window has expired:  "Attendance for this event has closed."
+- Admin manually deactivated the form:  "Attendance form is currently unavailable. Contact the administrator."
+- Admin re-activated for a specific user: Form re-opens for that user only
+- While the form is open, show a live countdown timer: ⏱ Attendance closes in: 00:38:24 ← ticking live
+- When the countdown reaches zero, immediately lock the form without page reload.
+
+
+2.  Attendance Form Fields
+
+The form is divided into three sections: 
+
+1. Event Details (auto-populated): based from meeting/event selected. All fields in this section are automatically populated when the user selects or is directed to a specific Meeting/Event. No manual input allowed.
+
+
+Meeting No.: Auto count
+Meeting Date: Start and End Date if Similar put only one Date
+Meeting Venue: Address/Zoom link 
+Meeting Time: Start Time - End Time
+Meeting Duration: Duration
+
+
+2. Attendee Form Details (auto-populated from user profile), 
+
+No.: Attendance Sequence Number: Assigned automatically when the user's attendance is successfully saved. Represents the order of submission per event — first person to submit gets No. 1, second gets No. 2, etc.
+Name: Auto-populated from the logged-in user's full_name in their profile; Displayed as plain read-only text — not an input field
+Signature: Auto-loads the user's saved signature image from their user profile
+Position - Auto populate field based on user profile position
+
+
+
+3. Attendance Admin Section (restricted).
+Remarks: Only Admin can edit this part.

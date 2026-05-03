@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
@@ -18,6 +19,7 @@ import {
 import { useToast } from "@/hooks/use-toast";
 import { formatDateAST, formatTimeAST, getASTDateStr } from "@/lib/ast";
 import { cn } from "@/lib/utils";
+import MeetingAttendanceTab from "./MeetingAttendanceTab";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -258,18 +260,32 @@ export default function AttendancePage() {
   const filteredUser = specificUser ? users.find(u => u.id === specificUser) : null;
 
   return (
-    <div className="p-6 space-y-6 max-w-5xl mx-auto">
+    <div className="p-6 space-y-5 max-w-5xl mx-auto">
 
-      {/* ── Header ──────────────────────────────────────────────────────── */}
+      {/* ── Page title ──────────────────────────────────────────────────── */}
+      <div>
+        <h1 className="text-2xl font-bold text-foreground">{t("attendance.title")}</h1>
+        <p className="text-sm text-muted-foreground mt-0.5">
+          {formatDateAST(new Date(), isAr ? "ar" : "en")} · KSA
+        </p>
+      </div>
+
+      <Tabs defaultValue="daily" className="space-y-5">
+        <TabsList className="w-full sm:w-auto">
+          <TabsTrigger value="daily" className="gap-2">
+            <Clock className="w-3.5 h-3.5" /> {t("meetingForm.dailyTabLabel")}
+          </TabsTrigger>
+          <TabsTrigger value="meeting" className="gap-2">
+            <UserCheck className="w-3.5 h-3.5" /> {t("meetingForm.tabLabel")}
+          </TabsTrigger>
+        </TabsList>
+
+        {/* ── Daily Attendance tab ─────────────────────────────────────── */}
+        <TabsContent value="daily" className="space-y-6 mt-0">
+
+      {/* ── Header controls ─────────────────────────────────────────────── */}
       <div className="flex flex-col gap-3">
         <div className="flex items-start justify-between gap-4 flex-wrap">
-          <div>
-            <h1 className="text-2xl font-bold text-foreground">{t("attendance.title")}</h1>
-            <p className="text-sm text-muted-foreground mt-0.5">
-              {formatDateAST(new Date(), isAr ? "ar" : "en")} · KSA
-            </p>
-          </div>
-
           {isAdmin && (
             <Select value={filterUser} onValueChange={setFilterUser}>
               <SelectTrigger className="w-52 h-9">
@@ -638,6 +654,15 @@ export default function AttendancePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+        </TabsContent>
+
+        {/* ── Meeting Attendance tab ───────────────────────────────────── */}
+        <TabsContent value="meeting" className="mt-0">
+          <MeetingAttendanceTab />
+        </TabsContent>
+
+      </Tabs>
     </div>
   );
 }
