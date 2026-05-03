@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 import { notifyAllUsers } from "../lib/notifyAll";
 
@@ -41,7 +41,7 @@ router.get("/articles", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/articles", requireAuth, async (req, res) => {
+router.post("/articles", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
   try {
     const { title, title_ar, content, content_ar, excerpt, excerpt_ar, cover_image_url, is_published } = req.body;
 
@@ -104,7 +104,7 @@ router.get("/articles/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.patch("/articles/:id", requireAuth, async (req, res) => {
+router.patch("/articles/:id", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
   try {
     const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
     const fields = ["title", "title_ar", "content", "content_ar", "excerpt", "excerpt_ar", "cover_image_url", "is_published"];
@@ -134,7 +134,7 @@ router.patch("/articles/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/articles/:id", requireAuth, async (req, res) => {
+router.delete("/articles/:id", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
   try {
     const { error } = await supabaseAdmin
       .from("articles")

@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth } from "../middlewares/auth";
+import { requireAuth, requireRole, ADMIN_ROLES } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 import { notifyAllUsers } from "../lib/notifyAll";
 
@@ -141,7 +141,7 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
 });
 
 // ── POST /calendar/events ─────────────────────────────────────────────────────
-router.post("/calendar/events", requireAuth, async (req, res) => {
+router.post("/calendar/events", requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const {
       title, title_ar,
@@ -224,7 +224,7 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
 });
 
 // ── PATCH /calendar/events/:id ────────────────────────────────────────────────
-router.patch("/calendar/events/:id", requireAuth, async (req, res) => {
+router.patch("/calendar/events/:id", requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const eventId = req.params.id as string;
 
@@ -284,7 +284,7 @@ router.patch("/calendar/events/:id", requireAuth, async (req, res) => {
 });
 
 // ── DELETE /calendar/events/:id ───────────────────────────────────────────────
-router.delete("/calendar/events/:id", requireAuth, async (req, res) => {
+router.delete("/calendar/events/:id", requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
   try {
     const { error } = await supabaseAdmin
       .from("calendar_events")

@@ -43,6 +43,9 @@ export async function requireAuth(req: Request, res: Response, next: NextFunctio
   next();
 }
 
+export const ADMIN_ROLES = ["admin", "ceo", "director"] as const;
+export type AdminRole = typeof ADMIN_ROLES[number];
+
 export function requireRole(...roles: string[]) {
   return (req: Request, res: Response, next: NextFunction) => {
     if (!req.user) {
@@ -55,4 +58,9 @@ export function requireRole(...roles: string[]) {
     }
     next();
   };
+}
+
+/** Returns true if the user's role is an admin-tier role. */
+export function isAdminRole(role: string): boolean {
+  return (ADMIN_ROLES as readonly string[]).includes(role);
 }

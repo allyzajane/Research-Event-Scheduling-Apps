@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatDateAST } from "@/lib/ast";
 import {
   useListArticles, getListArticlesQueryKey,
@@ -37,6 +38,7 @@ function formatDate(d: string) {
 
 export default function ArticlesPage() {
   const { t } = useTranslation();
+  const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -143,9 +145,11 @@ export default function ArticlesPage() {
           <h1 className="text-2xl font-bold text-foreground">{t("articles.title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("articles.subtitle")}</p>
         </div>
-        <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
-          <PlusCircle className="w-4 h-4" /> {t("articles.createArticle")}
-        </Button>
+        {isAdmin && (
+          <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
+            <PlusCircle className="w-4 h-4" /> {t("articles.createArticle")}
+          </Button>
+        )}
       </div>
 
       {/* Filters */}
@@ -196,26 +200,28 @@ export default function ArticlesPage() {
                       </p>
                     )}
                   </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
-                        <MoreHorizontal className="w-4 h-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => setEditArticle({ id: article.id, form: {
-                        title: article.title, title_ar: article.title_ar || "", content: article.content,
-                        content_ar: article.content_ar || "", excerpt: article.excerpt || "",
-                        excerpt_ar: article.excerpt_ar || "", cover_image_url: article.cover_image_url || "",
-                        is_published: article.is_published
-                      }})}>
-                        <Pencil className="w-3.5 h-3.5 me-2" />{t("common.edit")}
-                      </DropdownMenuItem>
-                      <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(article.id)}>
-                        <Trash2 className="w-3.5 h-3.5 me-2" />{t("common.delete")}
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
+                  {isAdmin && (
+                    <DropdownMenu>
+                      <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 flex-shrink-0">
+                          <MoreHorizontal className="w-4 h-4" />
+                        </Button>
+                      </DropdownMenuTrigger>
+                      <DropdownMenuContent align="end">
+                        <DropdownMenuItem onClick={() => setEditArticle({ id: article.id, form: {
+                          title: article.title, title_ar: article.title_ar || "", content: article.content,
+                          content_ar: article.content_ar || "", excerpt: article.excerpt || "",
+                          excerpt_ar: article.excerpt_ar || "", cover_image_url: article.cover_image_url || "",
+                          is_published: article.is_published
+                        }})}>
+                          <Pencil className="w-3.5 h-3.5 me-2" />{t("common.edit")}
+                        </DropdownMenuItem>
+                        <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(article.id)}>
+                          <Trash2 className="w-3.5 h-3.5 me-2" />{t("common.delete")}
+                        </DropdownMenuItem>
+                      </DropdownMenuContent>
+                    </DropdownMenu>
+                  )}
                 </div>
               </CardContent>
             </Card>
@@ -225,7 +231,9 @@ export default function ArticlesPage() {
         <div className="text-center py-20 text-muted-foreground">
           <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-30" />
           <p className="text-base font-medium mb-1">{t("articles.noArticles")}</p>
-          <Button variant="outline" onClick={() => setCreateOpen(true)} className="mt-3">{t("articles.createArticle")}</Button>
+          {isAdmin && (
+            <Button variant="outline" onClick={() => setCreateOpen(true)} className="mt-3">{t("articles.createArticle")}</Button>
+          )}
         </div>
       )}
 

@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
 import { formatDateAST, formatTimeAST, toInputDateTimeAST, fromInputDateTimeAST, getASTDateStr } from "@/lib/ast";
 import {
   useListEvents, getListEventsQueryKey,
@@ -495,6 +496,7 @@ function EventContent({ event, events }: { event: { id: string; title: string };
 
 export default function CalendarPage() {
   const { t } = useTranslation();
+  const { isAdmin } = useAuth();
   const qc = useQueryClient();
   const calRef = useRef<FullCalendar>(null);
 
@@ -547,11 +549,13 @@ export default function CalendarPage() {
   }), [events, isAr]);
 
   const handleDateClick = (info: DateClickArg) => {
+    if (!isAdmin) return;
     setForm(emptyForm(info.dateStr));
     setCreateOpen(true);
   };
 
   const handleEventClick = (info: EventClickArg) => {
+    if (!isAdmin) return;
     const ev = events.find(e => e.id === info.event.id);
     if (!ev) return;
     setEditEvent({ id: ev.id, form: eventToForm(ev) });
@@ -773,9 +777,11 @@ export default function CalendarPage() {
             <FileDown className="w-4 h-4" />
             {exporting ? "Exporting…" : "Export PDF"}
           </Button>
-          <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
-            <PlusCircle className="w-4 h-4" /> {t("calendar.createEvent")}
-          </Button>
+          {isAdmin && (
+            <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
+              <PlusCircle className="w-4 h-4" /> {t("calendar.createEvent")}
+            </Button>
+          )}
         </div>
       </div>
 
@@ -872,8 +878,11 @@ export default function CalendarPage() {
 
                   const cardInner = (
                     <div
-                      className="p-3 rounded-xl border border-border bg-card hover:border-primary/30 transition-all cursor-pointer group"
-                      onClick={() => setEditEvent({ id: ev.id, form: eventToForm(ev) })}
+                      className={cn(
+                        "p-3 rounded-xl border border-border bg-card transition-all group",
+                        isAdmin ? "hover:border-primary/30 cursor-pointer" : "cursor-default",
+                      )}
+                      onClick={() => isAdmin && setEditEvent({ id: ev.id, form: eventToForm(ev) })}
                     >
                       <div className="flex items-start gap-2.5">
                         <span
@@ -997,17 +1006,21 @@ export default function CalendarPage() {
             />
           )}
           <DialogFooter>
-            <Button
-              variant="ghost"
-              className="text-destructive me-auto"
-              onClick={() => { setDeleteId(editEvent!.id); setEditEvent(null); }}
-            >
-              <Trash2 className="w-4 h-4 me-1.5" />{t("common.delete")}
-            </Button>
+            {isAdmin && (
+              <Button
+                variant="ghost"
+                className="text-destructive me-auto"
+                onClick={() => { setDeleteId(editEvent!.id); setEditEvent(null); }}
+              >
+                <Trash2 className="w-4 h-4 me-1.5" />{t("common.delete")}
+              </Button>
+            )}
             <Button variant="outline" onClick={() => setEditEvent(null)}>{t("common.cancel")}</Button>
-            <Button onClick={handleEdit} disabled={saving}>
-              {saving ? t("common.loading") : t("common.save")}
-            </Button>
+            {isAdmin && (
+              <Button onClick={handleEdit} disabled={saving}>
+                {saving ? t("common.loading") : t("common.save")}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>

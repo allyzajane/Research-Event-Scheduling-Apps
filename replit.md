@@ -32,13 +32,40 @@ Bilingual (English + Arabic, RTL) full-stack web app for hospital research manag
 - Landing page (configurable hero, sections, theme, logo, background)
 - Dashboard with statistics
 - User management (admin only)
-- Document management (upload, list, delete)
-- Articles/Blog (CRUD)
-- Calendar events (FullCalendar)
+- Document management (upload, list, delete) — **RBAC enforced** (see below)
+- Articles/Blog (CRUD) — **RBAC enforced**
+- Calendar events (FullCalendar) — **RBAC enforced**
 - Admin settings: logo/background upload, theme colors, landing page sections
 - Profile page
 - Daily Attendance (clock-in/out, stats, CSV export, date range filter)
 - Meeting Attendance Forms (admin creates time-windowed forms linked to calendar events; staff submit with auto-populated signature; sequential submission numbering; live countdown timer; admin remarks per submission)
+
+## RBAC — Role-Based Access Control
+
+Admin roles: `admin`, `ceo`, `director` (defined as `ADMIN_ROLES` in `auth.ts` middleware).
+
+### Three-Layer Enforcement
+
+**1. UI Layer** (hide mutation buttons for non-admins):
+- Calendar: Create Event button, date-click, event card click, Edit/Delete in dialog all hidden for non-admins
+- Articles: Create Article button, Edit/Delete dropdown hidden for non-admins
+- Documents: Upload button, Delete menu item hidden; Download button shown only if user has explicit permission or is admin; Manage Access button (admin only)
+
+**2. Application Logic Layer** (Express route guards):
+- `POST/PATCH/DELETE /api/calendar/events` → `requireRole("admin","ceo","director")`
+- `POST/PATCH/DELETE /api/articles` → `requireRole("admin","ceo","director")`
+- `POST /api/documents/upload` → `requireRole("admin","ceo","director")`
+- `DELETE /api/documents/:id` → `requireRole("admin","ceo","director")`
+- `GET /api/documents` → enriches each doc with `can_download` flag; redacts `file_url` for unauthorized users
+
+**3. Database Layer** (Supabase RLS — Section 21 of migration):
+- Direct Supabase API inserts/updates/deletes on `calendar_events`, `articles`, `documents` restricted to admin roles via JWT `user_metadata.role` check
+
+### Document Download Permissions
+- Table: `document_download_permissions` (Section 20 of migration)
+- Admins grant/revoke per-document, per-user download access via "Manage Access" dialog on DocumentsPage
+- Non-admins without explicit permission see a locked download icon and no file URL in the API response
+- Endpoints: `GET /documents/my-permissions`, `GET /documents/:id/download-permissions`, `POST /documents/:id/grant-download`, `DELETE /documents/:id/revoke-download/:userId`
 
 ## Database Setup (Required First-Time)
 
@@ -47,10 +74,12 @@ Tables do NOT exist in Supabase by default. Run `supabase-migration.sql` in the 
 2. Select your project → SQL Editor
 3. Paste contents of `supabase-migration.sql` and run it
 
-Tables created: `profiles`, `landing_page_config`, `landing_page_sections`, `documents`, `articles`, `calendar_events`, `theme_settings`, `attendance`, `meeting_attendance_forms`, `meeting_attendance_submissions`
+Tables created: `profiles`, `landing_page_config`, `landing_page_sections`, `documents`, `articles`, `calendar_events`, `theme_settings`, `attendance`, `meeting_attendance_forms`, `meeting_attendance_submissions`, `document_download_permissions`
 
 **Section 17** adds the `attendance` table (daily clock-in/out).
 **Section 18** adds `meeting_attendance_forms` and `meeting_attendance_submissions` for the Meeting Attendance Form system.
+**Section 20** adds `document_download_permissions` for per-user document download grants.
+**Section 21** adds tighter RLS write policies on `calendar_events`, `articles`, and `documents` (restrict direct Supabase API writes to admin roles only).
 
 ## First Admin User
 

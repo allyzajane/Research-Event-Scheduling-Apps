@@ -1,5 +1,5 @@
 import { Router } from "express";
-import { requireAuth, requireRole } from "../middlewares/auth";
+import { requireAuth, requireRole, isAdminRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 import { notifyAllUsers } from "../lib/notifyAll";
 
@@ -22,7 +22,7 @@ router.get("/documents", requireAuth, async (req, res) => {
   try {
     const { type, search, page = "1", limit = "20" } = req.query as Record<string, string>;
     const pageNum = parseInt(page, 10) || 1;
-    const limitNum = Math.min(parseInt(limit, 10) || 20, 50); // cap at 50 per page
+    const limitNum = Math.min(parseInt(limit, 10) || 20, 50);
     const offset = (pageNum - 1) * limitNum;
 
     let query = supabaseAdmin
@@ -42,11 +42,30 @@ router.get("/documents", requireAuth, async (req, res) => {
       return;
     }
 
-    const items = (data || []).map((d: Record<string, unknown>) => ({
-      ...d,
-      uploader_name: (d.profiles as { full_name?: string } | null)?.full_name || null,
-      profiles: undefined,
-    }));
+    const userId    = req.user!.id;
+    const userIsAdmin = isAdminRole(req.user!.role);
+
+    // For non-admins, look up which documents they have explicit download permission for.
+    let permittedDocIds = new Set<string>();
+    if (!userIsAdmin && (data || []).length > 0) {
+      const { data: perms } = await supabaseAdmin
+        .from("document_download_permissions")
+        .select("document_id")
+        .eq("user_id", userId);
+      permittedDocIds = new Set((perms || []).map((p: { document_id: string }) => p.document_id));
+    }
+
+    const items = (data || []).map((d: Record<string, unknown>) => {
+      const canDownload = userIsAdmin || permittedDocIds.has(d.id as string);
+      return {
+        ...d,
+        uploader_name: (d.profiles as { full_name?: string } | null)?.full_name || null,
+        profiles: undefined,
+        can_download: canDownload,
+        // Redact the file URL for users who have no download permission
+        file_url: canDownload ? d.file_url : null,
+      };
+    });
 
     res.json({ items, total: count || 0, page: pageNum, limit: limitNum });
   } catch (err) {
@@ -88,7 +107,29 @@ router.get("/documents/stats", requireAuth, async (req, res) => {
   }
 });
 
-router.post("/documents/upload", requireAuth, async (req, res) => {
+// ── GET /documents/my-permissions ──────────────────────────────────────────────
+// Returns the list of document IDs the current user has explicit download access to.
+// Admins always have full access so this endpoint is most useful for non-admin users.
+router.get("/documents/my-permissions", requireAuth, async (req, res) => {
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("document_download_permissions")
+      .select("document_id")
+      .eq("user_id", req.user!.id);
+
+    if (error) {
+      if (error.code === "42P01") { res.json([]); return; }
+      throw error;
+    }
+
+    res.json(data || []);
+  } catch (err) {
+    req.log.error({ err }, "Failed to get download permissions");
+    res.json([]);
+  }
+});
+
+router.post("/documents/upload", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
   try {
     const { file_base64, file_name, mime_type, title, description } = req.body;
 
@@ -187,7 +228,106 @@ router.get("/documents/:id", requireAuth, async (req, res) => {
   }
 });
 
-router.delete("/documents/:id", requireAuth, requireRole("admin"), async (req, res) => {
+// ── GET /documents/:id/download-permissions ────────────────────────────────────
+// Admin-only: returns all active users with their download permission status for a document.
+router.get("/documents/:id/download-permissions", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
+  try {
+    const docId = req.params.id as string;
+
+    const [usersResult, permsResult] = await Promise.all([
+      supabaseAdmin
+        .from("profiles")
+        .select("id, full_name, email, role")
+        .eq("is_active", true)
+        .order("full_name"),
+      supabaseAdmin
+        .from("document_download_permissions")
+        .select("user_id")
+        .eq("document_id", docId),
+    ]);
+
+    if (permsResult.error && permsResult.error.code === "42P01") {
+      // Table not yet created — return users all with can_download: false
+      const users = usersResult.data || [];
+      res.json(users.map(u => ({ user_id: u.id, full_name: u.full_name, email: u.email, role: u.role, can_download: false })));
+      return;
+    }
+
+    const permittedIds = new Set((permsResult.data || []).map((p: { user_id: string }) => p.user_id));
+
+    res.json((usersResult.data || []).map(u => ({
+      user_id:      u.id,
+      full_name:    u.full_name,
+      email:        u.email,
+      role:         u.role,
+      can_download: permittedIds.has(u.id),
+    })));
+  } catch (err) {
+    req.log.error({ err }, "Failed to get document download permissions");
+    res.json([]);
+  }
+});
+
+// ── POST /documents/:id/grant-download ─────────────────────────────────────────
+// Admin-only: grant download access to one or more users.
+router.post("/documents/:id/grant-download", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
+  try {
+    const docId = req.params.id as string;
+    const { user_ids } = req.body as { user_ids: string[] };
+
+    if (!Array.isArray(user_ids) || user_ids.length === 0) {
+      res.status(400).json({ error: "user_ids array is required" });
+      return;
+    }
+
+    const rows = user_ids.map(uid => ({
+      document_id: docId,
+      user_id:     uid,
+      granted_by:  req.user!.id,
+      granted_at:  new Date().toISOString(),
+    }));
+
+    const { error } = await supabaseAdmin
+      .from("document_download_permissions")
+      .upsert(rows, { onConflict: "document_id,user_id" });
+
+    if (error) {
+      if (error.code === "42P01") {
+        res.status(503).json({ error: "Run Section 20 of supabase-migration.sql first." });
+        return;
+      }
+      throw error;
+    }
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to grant download permission");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── DELETE /documents/:id/revoke-download/:userId ──────────────────────────────
+// Admin-only: revoke a specific user's download access.
+router.delete("/documents/:id/revoke-download/:userId", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
+  try {
+    const { id: docId, userId } = req.params as { id: string; userId: string };
+
+    const { error } = await supabaseAdmin
+      .from("document_download_permissions")
+      .delete()
+      .eq("document_id", docId)
+      .eq("user_id", userId);
+
+    if (error && error.code !== "42P01") throw error;
+
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to revoke download permission");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.delete("/documents/:id", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
   try {
     const { data: doc } = await supabaseAdmin
       .from("documents")

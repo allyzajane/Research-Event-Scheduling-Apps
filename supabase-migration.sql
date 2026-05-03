@@ -577,3 +577,108 @@ alter table public.profiles
   add column if not exists signature_drawn_url   text,
   add column if not exists signature_active_type text default 'uploaded',
   add column if not exists last_seen_at          timestamptz;
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 20. DOCUMENT DOWNLOAD PERMISSIONS
+-- Stores per-document, per-user download grants set by admins.
+-- ─────────────────────────────────────────────────────────────
+
+create table if not exists public.document_download_permissions (
+  id          uuid        primary key default gen_random_uuid(),
+  document_id uuid        not null references public.documents(id) on delete cascade,
+  user_id     uuid        not null references public.profiles(id) on delete cascade,
+  granted_by  uuid        references public.profiles(id) on delete set null,
+  granted_at  timestamptz not null default now(),
+  unique(document_id, user_id)
+);
+
+alter table public.document_download_permissions enable row level security;
+
+-- Users can view their own grants (so the frontend knows which docs they can download).
+drop policy if exists "Users see own download perms" on public.document_download_permissions;
+create policy "Users see own download perms" on public.document_download_permissions
+  for select
+  using (auth.uid() = user_id);
+
+-- Service role (backend) can manage all rows.
+drop policy if exists "Service manage download perms" on public.document_download_permissions;
+create policy "Service manage download perms" on public.document_download_permissions
+  for all using (true) with check (true);
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 21. TIGHTER RLS FOR DIRECT SUPABASE API WRITES
+-- Restricts calendar_events, articles, and documents writes
+-- when users call the Supabase API directly with their JWT.
+-- (Service-role backend bypasses RLS automatically.)
+-- ─────────────────────────────────────────────────────────────
+
+-- Helper: admin role check via JWT user_metadata
+-- Returns true for admin / ceo / director.
+
+-- calendar_events — restrict direct inserts/updates/deletes to admin roles
+drop policy if exists "Admin direct write events" on public.calendar_events;
+create policy "Admin direct write events" on public.calendar_events
+  for insert to authenticated
+  with check (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+drop policy if exists "Admin direct update events" on public.calendar_events;
+create policy "Admin direct update events" on public.calendar_events
+  for update to authenticated
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+drop policy if exists "Admin direct delete events" on public.calendar_events;
+create policy "Admin direct delete events" on public.calendar_events
+  for delete to authenticated
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+-- articles — restrict direct inserts/updates/deletes to admin roles
+drop policy if exists "Admin direct write articles" on public.articles;
+create policy "Admin direct write articles" on public.articles
+  for insert to authenticated
+  with check (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+drop policy if exists "Admin direct update articles" on public.articles;
+create policy "Admin direct update articles" on public.articles
+  for update to authenticated
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+drop policy if exists "Admin direct delete articles" on public.articles;
+create policy "Admin direct delete articles" on public.articles
+  for delete to authenticated
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+-- documents — restrict direct inserts/updates/deletes to admin roles
+drop policy if exists "Admin direct write documents" on public.documents;
+create policy "Admin direct write documents" on public.documents
+  for insert to authenticated
+  with check (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+drop policy if exists "Admin direct update documents" on public.documents;
+create policy "Admin direct update documents" on public.documents
+  for update to authenticated
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );
+
+drop policy if exists "Admin direct delete documents" on public.documents;
+create policy "Admin direct delete documents" on public.documents
+  for delete to authenticated
+  using (
+    (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
+  );

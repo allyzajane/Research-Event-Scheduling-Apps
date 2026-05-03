@@ -26,7 +26,7 @@ interface Props {
   document: {
     id: string;
     title: string;
-    file_url: string;
+    file_url: string | null;
     file_type: string;
     description?: string | null;
     uploader_name?: string | null;
@@ -100,7 +100,7 @@ export default function SignDocumentDialog({ open, onClose, document: doc }: Pro
       await generateSigningCertificate({
         documentTitle:       doc.title,
         documentDescription: doc.description,
-        documentUrl:         doc.file_url,
+        documentUrl:         doc.file_url ?? "",
         signers:             certSigners,
       });
     } finally {
@@ -143,7 +143,7 @@ export default function SignDocumentDialog({ open, onClose, document: doc }: Pro
                 <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{doc.description}</p>
               )}
               <a
-                href={doc.file_url}
+                href={doc.file_url ?? undefined}
                 target="_blank"
                 rel="noreferrer"
                 className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
