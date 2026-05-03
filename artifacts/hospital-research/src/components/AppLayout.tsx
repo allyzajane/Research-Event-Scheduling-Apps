@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -27,11 +27,29 @@ const roleColors: Record<string, string> = {
   staff: "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
 };
 
+function getASTClock() {
+  const now = new Date();
+  return {
+    time: new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Riyadh", hour: "2-digit", minute: "2-digit", second: "2-digit", hour12: false,
+    }).format(now),
+    date: new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Riyadh", weekday: "short", day: "numeric", month: "short",
+    }).format(now),
+  };
+}
+
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { user, isAdmin, signOut } = useAuth();
   const [location] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [astClock, setAstClock] = useState(getASTClock);
+
+  useEffect(() => {
+    const id = setInterval(() => setAstClock(getASTClock()), 1000);
+    return () => clearInterval(id);
+  }, []);
 
   const navItems = [
     { href: "/dashboard", icon: LayoutDashboard, label: t("nav.dashboard"), roles: ["admin","ceo","director","doctor","nurse","staff"] },
@@ -160,7 +178,16 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </h1>
             </div>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-3">
+            {/* Saudi Local Time — 24h military clock */}
+            <div className="hidden sm:flex flex-col items-end leading-none select-none border-r border-border pr-3 mr-1">
+              <span className="font-mono text-sm font-bold tabular-nums text-foreground tracking-tight">
+                {astClock.time}
+              </span>
+              <span className="text-[10px] text-muted-foreground mt-0.5 tracking-wide">
+                {astClock.date} · KSA
+              </span>
+            </div>
             <NotificationBell />
             <Button variant="outline" size="sm" onClick={toggleLang} className="text-xs font-semibold px-3 h-8">
               {i18n.language === "ar" ? "EN" : "عر"}
