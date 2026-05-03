@@ -83,7 +83,7 @@ export default function AttendancePage() {
   const isAr = i18n.language === "ar";
   const isAdmin = ["admin", "ceo", "director"].includes(user?.role ?? "");
 
-  const [filterUser, setFilterUser] = useState<string>("");
+  const [filterUser, setFilterUser] = useState<string>("__all__");
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [liveMs, setLiveMs] = useState(0);
 
@@ -112,10 +112,12 @@ export default function AttendancePage() {
   });
 
   // ── Stats (follows filter) ─────────────────────────────────────────────────
+  const specificUser = filterUser !== "__all__" ? filterUser : null;
+
   const { data: stats, isLoading: loadingStats } = useQuery<AttendanceStats>({
     queryKey: ["attendance/stats", filterUser],
     queryFn: async () => {
-      const qs = filterUser ? `?user_id=${filterUser}` : "";
+      const qs = specificUser ? `?user_id=${specificUser}` : "";
       const r = await fetch(`/api/attendance/stats${qs}`, { headers: auth() });
       return r.json();
     },
@@ -125,7 +127,7 @@ export default function AttendancePage() {
   const { data: records = [], isLoading: loadingHistory } = useQuery<AttendanceRecord[]>({
     queryKey: ["attendance/list", filterUser],
     queryFn: async () => {
-      const qs = filterUser ? `?user_id=${filterUser}` : "";
+      const qs = specificUser ? `?user_id=${specificUser}` : "";
       const r = await fetch(`/api/attendance${qs}`, { headers: auth() });
       if (!r.ok) return [];
       return r.json();
@@ -188,7 +190,7 @@ export default function AttendancePage() {
   const statusCfg    = today?.status ? STATUS_CONFIG[today.status] : null;
   const todayDateStr = getASTDateStr();
 
-  const filteredUser = filterUser ? users.find(u => u.id === filterUser) : null;
+  const filteredUser = specificUser ? users.find(u => u.id === specificUser) : null;
 
   return (
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
@@ -208,7 +210,7 @@ export default function AttendancePage() {
               <SelectValue placeholder={t("attendance.allUsers")} />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">{t("attendance.allUsers")}</SelectItem>
+              <SelectItem value="__all__">{t("attendance.allUsers")}</SelectItem>
               {users.map(u => (
                 <SelectItem key={u.id} value={u.id}>
                   {(isAr && u.full_name_ar) ? u.full_name_ar : u.full_name ?? u.email}
