@@ -38,6 +38,8 @@ interface UserProfile {
   role?: string;
   department?: string;
   signature_url?: string;
+  signature_drawn_url?: string;
+  signature_active_type?: string;
 }
 
 interface Submission {
@@ -202,7 +204,9 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
 
   const ev       = form;
   const profile  = form?.my_profile ?? null;
-  const sigUrl   = profile?.signature_url;
+  const sigUrl   = profile?.signature_active_type === "drawn"
+    ? (profile?.signature_drawn_url || profile?.signature_url)
+    : (profile?.signature_url || profile?.signature_drawn_url);
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
   const position = profile?.department || profile?.role || user?.department || user?.role || "—";
   const venue    = ev?.venue || ev?.location || "—";
