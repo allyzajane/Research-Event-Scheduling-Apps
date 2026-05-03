@@ -209,4 +209,161 @@ router.delete("/documents/:id", requireAuth, requireRole("admin"), async (req, r
   }
 });
 
+router.get("/documents/:id/signatures", requireAuth, async (req, res) => {
+  const docId = String(req.params.id);
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("document_signatures")
+      .select("*, profiles!document_signatures_user_id_fkey(full_name, role, email)")
+      .eq("document_id", docId)
+      .order("signed_at", { ascending: true });
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "PGRST205") {
+        res.json({ signatures: [], count: 0 });
+        return;
+      }
+      throw error;
+    }
+
+    const signatures = (data || []).map((s: Record<string, unknown>) => ({
+      ...s,
+      user_name:  (s.profiles as { full_name?: string } | null)?.full_name || null,
+      user_role:  (s.profiles as { role?: string } | null)?.role || "staff",
+      user_email: (s.profiles as { email?: string } | null)?.email || null,
+      profiles: undefined,
+    }));
+
+    res.json({ signatures, count: signatures.length });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get document signatures");
+    res.json({ signatures: [], count: 0 });
+  }
+});
+
+router.post("/documents/:id/sign", requireAuth, async (req, res) => {
+  const docId   = String(req.params.id);
+  const userId  = req.user!.id;
+  const { signature_url, notes } = req.body as { signature_url: string; notes?: string };
+
+  if (!signature_url) {
+    res.status(400).json({ error: "signature_url is required" });
+    return;
+  }
+
+  try {
+    const { data: doc } = await supabaseAdmin
+      .from("documents")
+      .select("id, title, uploaded_by")
+      .eq("id", docId)
+      .single();
+
+    if (!doc) {
+      res.status(404).json({ error: "Document not found" });
+      return;
+    }
+
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("full_name, role, email")
+      .eq("id", userId)
+      .single();
+
+    const { error: sigError } = await supabaseAdmin
+      .from("document_signatures")
+      .upsert({
+        document_id: docId,
+        user_id:     userId,
+        signature_url,
+        notes: notes || null,
+        signed_at: new Date().toISOString(),
+      }, { onConflict: "document_id,user_id" });
+
+    if (sigError) {
+      if (sigError.code === "42P01") {
+        res.status(503).json({ error: "Signatures table not yet created. Run Section 12 of supabase-migration.sql in the Supabase SQL editor." });
+        return;
+      }
+      throw sigError;
+    }
+
+    // Notify document owner if different
+    if (doc.uploaded_by && doc.uploaded_by !== userId) {
+      await supabaseAdmin.from("notifications").insert({
+        user_id:  doc.uploaded_by,
+        type:     "document",
+        title:    "Document Signed",
+        title_ar: "تم توقيع الوثيقة",
+        body:    `"${doc.title}" was signed by ${profile?.full_name || "a user"}.`,
+        body_ar: `تم توقيع "${doc.title}" من قِبل ${profile?.full_name || "مستخدم"}.`,
+        is_read: false,
+        link: "/documents",
+      }).throwOnError();
+    }
+
+    res.status(201).json({ success: true, message: "Document signed successfully" });
+  } catch (err) {
+    req.log.error({ err }, "Failed to sign document");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/documents/:id/request-signatures", requireAuth, requireRole("admin", "ceo", "director"), async (req, res) => {
+  const docId = String(req.params.id);
+  const { user_ids, message } = req.body as { user_ids: string[]; message?: string };
+
+  if (!Array.isArray(user_ids) || user_ids.length === 0) {
+    res.status(400).json({ error: "user_ids array is required" });
+    return;
+  }
+
+  try {
+    const { data: doc } = await supabaseAdmin
+      .from("documents")
+      .select("title")
+      .eq("id", docId)
+      .single();
+
+    const docTitle = doc?.title || "Document";
+
+    const requests = user_ids.map(uid => ({
+      document_id:       docId,
+      requested_user_id: uid,
+      requested_by:      req.user!.id,
+      status:            "pending",
+      message:           message || null,
+    }));
+
+    const { error } = await supabaseAdmin
+      .from("document_signature_requests")
+      .upsert(requests, { onConflict: "document_id,requested_user_id" });
+
+    if (error) {
+      if (error.code === "42P01") {
+        res.status(503).json({ error: "Signature requests table not yet created." });
+        return;
+      }
+      throw error;
+    }
+
+    const notifs = user_ids.map(uid => ({
+      user_id:  uid,
+      type:     "document",
+      title:    "Signature Required",
+      title_ar: "مطلوب توقيع",
+      body:     `Your signature is required on "${docTitle}"${message ? `: ${message}` : "."}`,
+      body_ar:  `مطلوب توقيعك على "${docTitle}"${message ? `: ${message}` : "."}`,
+      is_read:  false,
+      link:     "/documents",
+    }));
+
+    await supabaseAdmin.from("notifications").insert(notifs).throwOnError();
+
+    res.json({ success: true, message: `Signature requested from ${user_ids.length} user(s)` });
+  } catch (err) {
+    req.log.error({ err }, "Failed to request signatures");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

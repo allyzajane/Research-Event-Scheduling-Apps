@@ -32,6 +32,7 @@ import type {
   DeleteResponse,
   Document,
   DocumentList,
+  DocumentSignatureList,
   DocumentStats,
   HealthStatus,
   LandingPageConfig,
@@ -42,9 +43,11 @@ import type {
   ListUsersParams,
   Notification,
   NotificationList,
+  RequestSignaturesBody,
   RoleDashboardConfig,
   Section,
   SetPasswordBody,
+  SignDocumentBody,
   SuccessResponse,
   ThemeSettings,
   UnreadCount,
@@ -2554,6 +2557,269 @@ export function useGetDocumentStats<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary List all signatures for a document
+ */
+export const getGetDocumentSignaturesUrl = (id: string) => {
+  return `/api/documents/${id}/signatures`;
+};
+
+export const getDocumentSignatures = async (
+  id: string,
+  options?: RequestInit,
+): Promise<DocumentSignatureList> => {
+  return customFetch<DocumentSignatureList>(getGetDocumentSignaturesUrl(id), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetDocumentSignaturesQueryKey = (id: string) => {
+  return [`/api/documents/${id}/signatures`] as const;
+};
+
+export const getGetDocumentSignaturesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getDocumentSignatures>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDocumentSignatures>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetDocumentSignaturesQueryKey(id);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getDocumentSignatures>>
+  > = ({ signal }) => getDocumentSignatures(id, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!id,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getDocumentSignatures>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetDocumentSignaturesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getDocumentSignatures>>
+>;
+export type GetDocumentSignaturesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List all signatures for a document
+ */
+
+export function useGetDocumentSignatures<
+  TData = Awaited<ReturnType<typeof getDocumentSignatures>>,
+  TError = ErrorType<unknown>,
+>(
+  id: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getDocumentSignatures>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetDocumentSignaturesQueryOptions(id, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Sign a document with the current user's signature
+ */
+export const getSignDocumentUrl = (id: string) => {
+  return `/api/documents/${id}/sign`;
+};
+
+export const signDocument = async (
+  id: string,
+  signDocumentBody: SignDocumentBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getSignDocumentUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(signDocumentBody),
+  });
+};
+
+export const getSignDocumentMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signDocument>>,
+    TError,
+    { id: string; data: BodyType<SignDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof signDocument>>,
+  TError,
+  { id: string; data: BodyType<SignDocumentBody> },
+  TContext
+> => {
+  const mutationKey = ["signDocument"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof signDocument>>,
+    { id: string; data: BodyType<SignDocumentBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return signDocument(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type SignDocumentMutationResult = NonNullable<
+  Awaited<ReturnType<typeof signDocument>>
+>;
+export type SignDocumentMutationBody = BodyType<SignDocumentBody>;
+export type SignDocumentMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Sign a document with the current user's signature
+ */
+export const useSignDocument = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof signDocument>>,
+    TError,
+    { id: string; data: BodyType<SignDocumentBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof signDocument>>,
+  TError,
+  { id: string; data: BodyType<SignDocumentBody> },
+  TContext
+> => {
+  return useMutation(getSignDocumentMutationOptions(options));
+};
+
+/**
+ * @summary Request signatures from specific users (admin/director/ceo)
+ */
+export const getRequestDocumentSignaturesUrl = (id: string) => {
+  return `/api/documents/${id}/request-signatures`;
+};
+
+export const requestDocumentSignatures = async (
+  id: string,
+  requestSignaturesBody: RequestSignaturesBody,
+  options?: RequestInit,
+): Promise<SuccessResponse> => {
+  return customFetch<SuccessResponse>(getRequestDocumentSignaturesUrl(id), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(requestSignaturesBody),
+  });
+};
+
+export const getRequestDocumentSignaturesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestDocumentSignatures>>,
+    TError,
+    { id: string; data: BodyType<RequestSignaturesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof requestDocumentSignatures>>,
+  TError,
+  { id: string; data: BodyType<RequestSignaturesBody> },
+  TContext
+> => {
+  const mutationKey = ["requestDocumentSignatures"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof requestDocumentSignatures>>,
+    { id: string; data: BodyType<RequestSignaturesBody> }
+  > = (props) => {
+    const { id, data } = props ?? {};
+
+    return requestDocumentSignatures(id, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type RequestDocumentSignaturesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof requestDocumentSignatures>>
+>;
+export type RequestDocumentSignaturesMutationBody =
+  BodyType<RequestSignaturesBody>;
+export type RequestDocumentSignaturesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Request signatures from specific users (admin/director/ceo)
+ */
+export const useRequestDocumentSignatures = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof requestDocumentSignatures>>,
+    TError,
+    { id: string; data: BodyType<RequestSignaturesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof requestDocumentSignatures>>,
+  TError,
+  { id: string; data: BodyType<RequestSignaturesBody> },
+  TContext
+> => {
+  return useMutation(getRequestDocumentSignaturesMutationOptions(options));
+};
 
 /**
  * @summary List articles

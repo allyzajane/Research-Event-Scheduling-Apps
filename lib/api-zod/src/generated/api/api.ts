@@ -530,6 +530,59 @@ export const GetDocumentStatsResponse = zod.object({
 });
 
 /**
+ * @summary List all signatures for a document
+ */
+export const GetDocumentSignaturesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const GetDocumentSignaturesResponse = zod.object({
+  signatures: zod.array(
+    zod.object({
+      id: zod.string(),
+      document_id: zod.string(),
+      user_id: zod.string(),
+      user_name: zod.string().nullish(),
+      user_role: zod.string(),
+      user_email: zod.string().nullish(),
+      signature_url: zod.string(),
+      notes: zod.string().nullish(),
+      signed_at: zod.string(),
+    }),
+  ),
+  count: zod.number(),
+});
+
+/**
+ * @summary Sign a document with the current user's signature
+ */
+export const SignDocumentParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const SignDocumentBody = zod.object({
+  signature_url: zod.string(),
+  notes: zod.string().nullish(),
+});
+
+/**
+ * @summary Request signatures from specific users (admin/director/ceo)
+ */
+export const RequestDocumentSignaturesParams = zod.object({
+  id: zod.coerce.string(),
+});
+
+export const RequestDocumentSignaturesBody = zod.object({
+  user_ids: zod.array(zod.string()),
+  message: zod.string().nullish(),
+});
+
+export const RequestDocumentSignaturesResponse = zod.object({
+  success: zod.boolean(),
+  message: zod.string().nullish(),
+});
+
+/**
  * @summary List articles
  */
 export const ListArticlesQueryParams = zod.object({

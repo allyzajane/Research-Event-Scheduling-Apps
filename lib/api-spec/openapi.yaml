@@ -559,6 +559,75 @@ paths:
               schema:
                 $ref: "#/components/schemas/DocumentStats"
 
+  /documents/{id}/signatures:
+    get:
+      operationId: getDocumentSignatures
+      tags: [documents]
+      summary: List all signatures for a document
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: Document signatures
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/DocumentSignatureList"
+
+  /documents/{id}/sign:
+    post:
+      operationId: signDocument
+      tags: [documents]
+      summary: Sign a document with the current user's signature
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SignDocumentBody"
+      responses:
+        "201":
+          description: Signature recorded
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
+  /documents/{id}/request-signatures:
+    post:
+      operationId: requestDocumentSignatures
+      tags: [documents]
+      summary: Request signatures from specific users (admin/director/ceo)
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RequestSignaturesBody"
+      responses:
+        "200":
+          description: Requests sent
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SuccessResponse"
+
   /articles:
     get:
       operationId: listArticles
@@ -1167,6 +1236,60 @@ components:
         limit:
           type: integer
       required: [items, total, page, limit]
+
+    DocumentSignature:
+      type: object
+      properties:
+        id:
+          type: string
+        document_id:
+          type: string
+        user_id:
+          type: string
+        user_name:
+          type: ["string", "null"]
+        user_role:
+          type: string
+        user_email:
+          type: ["string", "null"]
+        signature_url:
+          type: string
+        notes:
+          type: ["string", "null"]
+        signed_at:
+          type: string
+      required: [id, document_id, user_id, user_role, signature_url, signed_at]
+
+    DocumentSignatureList:
+      type: object
+      properties:
+        signatures:
+          type: array
+          items:
+            $ref: "#/components/schemas/DocumentSignature"
+        count:
+          type: integer
+      required: [signatures, count]
+
+    SignDocumentBody:
+      type: object
+      properties:
+        signature_url:
+          type: string
+        notes:
+          type: ["string", "null"]
+      required: [signature_url]
+
+    RequestSignaturesBody:
+      type: object
+      properties:
+        user_ids:
+          type: array
+          items:
+            type: string
+        message:
+          type: ["string", "null"]
+      required: [user_ids]
 
     DocumentStats:
       type: object

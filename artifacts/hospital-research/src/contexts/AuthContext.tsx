@@ -9,6 +9,7 @@ interface AuthUser {
   full_name?: string;
   full_name_ar?: string;
   avatar_url?: string;
+  signature_url?: string;
   department?: string;
 }
 
@@ -39,6 +40,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       full_name: meta.full_name as string | undefined,
       full_name_ar: meta.full_name_ar as string | undefined,
       avatar_url: meta.avatar_url as string | undefined,
+      signature_url: meta.signature_url as string | undefined,
       department: meta.department as string | undefined,
     };
   }

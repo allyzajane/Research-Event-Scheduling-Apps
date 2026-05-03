@@ -375,3 +375,54 @@ $$;
 
 -- Run once immediately to start with a clean slate
 select public.cleanup_old_notifications();
+
+-- ─────────────────────────────────────────────────────────────
+-- 13. DOCUMENT SIGNATURES
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.document_signatures (
+  id            uuid default gen_random_uuid() primary key,
+  document_id   uuid references public.documents(id) on delete cascade,
+  user_id       uuid references public.profiles(id) on delete cascade,
+  signature_url text not null,
+  notes         text,
+  signed_at     timestamptz default now(),
+  unique (document_id, user_id)
+);
+
+alter table public.document_signatures enable row level security;
+
+create policy "users can view all signatures"
+  on public.document_signatures for select using (true);
+
+create policy "users can insert own signature"
+  on public.document_signatures for insert
+  with check (auth.uid() = user_id);
+
+create policy "users can update own signature"
+  on public.document_signatures for update
+  using (auth.uid() = user_id);
+
+-- ─────────────────────────────────────────────────────────────
+-- 14. DOCUMENT SIGNATURE REQUESTS
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.document_signature_requests (
+  id                 uuid default gen_random_uuid() primary key,
+  document_id        uuid references public.documents(id) on delete cascade,
+  requested_user_id  uuid references public.profiles(id) on delete cascade,
+  requested_by       uuid references public.profiles(id) on delete set null,
+  status             text default 'pending' check (status in ('pending','signed','declined')),
+  message            text,
+  requested_at       timestamptz default now(),
+  responded_at       timestamptz,
+  unique (document_id, requested_user_id)
+);
+
+alter table public.document_signature_requests enable row level security;
+
+create policy "users can view their own signature requests"
+  on public.document_signature_requests for select
+  using (auth.uid() = requested_user_id or auth.uid() = requested_by);
+
+create policy "admins can insert signature requests"
+  on public.document_signature_requests for insert
+  with check (true);

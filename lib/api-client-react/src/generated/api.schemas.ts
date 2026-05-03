@@ -191,6 +191,38 @@ export interface DocumentList {
   limit: number;
 }
 
+export interface DocumentSignature {
+  id: string;
+  document_id: string;
+  user_id: string;
+  /** @nullable */
+  user_name?: string | null;
+  user_role: string;
+  /** @nullable */
+  user_email?: string | null;
+  signature_url: string;
+  /** @nullable */
+  notes?: string | null;
+  signed_at: string;
+}
+
+export interface DocumentSignatureList {
+  signatures: DocumentSignature[];
+  count: number;
+}
+
+export interface SignDocumentBody {
+  signature_url: string;
+  /** @nullable */
+  notes?: string | null;
+}
+
+export interface RequestSignaturesBody {
+  user_ids: string[];
+  /** @nullable */
+  message?: string | null;
+}
+
 export type DocumentStatsByTypeItem = {
   type: string;
   count: number;
