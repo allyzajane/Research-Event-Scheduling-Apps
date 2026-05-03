@@ -6,10 +6,10 @@ import { notifyAllUsers } from "../lib/notifyAll";
 const router = Router();
 
 const EVENT_FIELDS = [
-  "title", "title_ar", "description", "description_ar",
-  "event_type", "organizer", "venue", "participants",
-  "event_status", "start_time", "end_time", "all_day",
-  "location", "color",
+  "title", "title_ar",
+  "event_type", "organizer", "venue",
+  "participants", "event_status", "start_time", "end_time",
+  "all_day", "color",
 ];
 
 function shapeEvent(e: Record<string, unknown>) {
@@ -52,7 +52,7 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
 router.post("/calendar/events", requireAuth, async (req, res) => {
   try {
     const {
-      title, title_ar, description, description_ar,
+      title, title_ar,
       event_type, organizer, venue, participants,
       event_status, start_time, end_time, all_day, color,
     } = req.body;
@@ -62,8 +62,6 @@ router.post("/calendar/events", requireAuth, async (req, res) => {
       .insert({
         title,
         title_ar: title_ar || null,
-        description: description || null,
-        description_ar: description_ar || null,
         event_type: event_type || "event",
         organizer: organizer || null,
         venue: venue || null,
