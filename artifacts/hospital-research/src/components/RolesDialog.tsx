@@ -230,10 +230,6 @@ export default function RolesDialog({ open, onClose }: Props) {
                 </div>
               </div>
               <div className="space-y-1.5">
-                <Label className="text-xs">{t("users.rolesManager.roleLabelAr")}</Label>
-                <Input value={addForm.label_ar} onChange={e => setAddForm(f => ({ ...f, label_ar: e.target.value }))} dir="rtl" placeholder="باحث" />
-              </div>
-              <div className="space-y-1.5">
                 <Label className="text-xs">{t("users.rolesManager.roleColor")}</Label>
                 <ColorPicker value={addForm.color} onChange={c => setAddForm(f => ({ ...f, color: c }))} />
               </div>
@@ -282,9 +278,6 @@ export default function RolesDialog({ open, onClose }: Props) {
                     {/* Labels */}
                     <div className="flex-1 min-w-0 flex items-center gap-2">
                       <Badge className={cn("text-xs font-medium", colors.badge)}>{displayLabel}</Badge>
-                      {role.label_ar && role.label_ar !== displayLabel && (
-                        <span className="text-xs text-muted-foreground truncate" dir="rtl">{role.label_ar}</span>
-                      )}
                     </div>
 
                     {/* User count */}
@@ -327,15 +320,9 @@ export default function RolesDialog({ open, onClose }: Props) {
                   {/* Inline edit form */}
                   {isEditing && (
                     <div className="space-y-3 pt-1 border-t border-border">
-                      <div className="grid grid-cols-2 gap-3">
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">{t("users.rolesManager.roleLabel")}</Label>
-                          <Input value={editForm.label} onChange={e => setEditForm(f => ({ ...f, label: e.target.value }))} />
-                        </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-xs">{t("users.rolesManager.roleLabelAr")}</Label>
-                          <Input value={editForm.label_ar} onChange={e => setEditForm(f => ({ ...f, label_ar: e.target.value }))} dir="rtl" />
-                        </div>
+                      <div className="space-y-1.5">
+                        <Label className="text-xs">{t("users.rolesManager.roleLabel")}</Label>
+                        <Input value={editForm.label} onChange={e => setEditForm(f => ({ ...f, label: e.target.value }))} />
                       </div>
                       <div className="space-y-1.5">
                         <Label className="text-xs">{t("users.rolesManager.roleColor")}</Label>
