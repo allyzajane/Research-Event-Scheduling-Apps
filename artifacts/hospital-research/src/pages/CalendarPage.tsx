@@ -635,8 +635,8 @@ export default function CalendarPage() {
 
   // Status counts for filter bar
   const counts = useMemo(() => {
-    const c: Record<string, number> = { all: events.length, present: 0, past: 0, canceled: 0, rescheduled: 0 };
-    events.forEach(ev => { c[getPinStatus(ev)] = (c[getPinStatus(ev)] || 0) + 1; });
+    const c: Record<string, number> = { all: visibleEvents.length, present: 0, past: 0, canceled: 0, rescheduled: 0 };
+    visibleEvents.forEach(ev => { c[getPinStatus(ev)] = (c[getPinStatus(ev)] || 0) + 1; });
     return c;
   }, [visibleEvents]);
 
