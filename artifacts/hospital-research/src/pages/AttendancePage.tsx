@@ -25,17 +25,32 @@ interface CalendarEvent {
   start_time: string;
   end_time?: string;
   event_type?: string;
+  organizer?: string;
+  participants?: string[];
+  creator_name?: string | null;
 }
 
 interface MeetingFormItem {
   id: string;
   meeting_no: number;
-  is_active: boolean;
-  window_start?: string;
-  window_end?: string;
-  calendar_events: CalendarEvent | null;
+  title: string;
+  title_ar?: string;
+  start_time: string;
+  end_time?: string;
+  venue?: string;
+  location?: string;
+  event_type?: string;
+  organizer?: string;
+  participants?: string[];
+  creator_name?: string | null;
+  calendar_events?: CalendarEvent | null;
   my_submission?: { id: string; submission_no: number; submitted_at: string } | null;
 }
+
+type AttendanceFormOption = Omit<MeetingFormItem, "calendar_events"> & {
+  calendar_events: CalendarEvent | null;
+  my_submission?: { id: string; submission_no: number; submitted_at: string; form_id: string; user_id: string } | null;
+};
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -57,12 +72,18 @@ function formatTime(iso: string) {
 }
 
 function getGateStatus(form: MeetingFormItem) {
-  if (form.my_submission) return "submitted";
-  const now = new Date();
-  if (!form.is_active)                          return "unavailable";
-  if (form.window_start && now < new Date(form.window_start)) return "pending";
-  if (form.window_end   && now > new Date(form.window_end))   return "closed";
   return "open";
+}
+
+function isAdminRoleValue(role?: string | null) {
+  return ["admin", "ceo", "director"].includes(role ?? "");
+}
+
+function getEventLabel(ev: Pick<MeetingFormItem, "title" | "title_ar" | "event_type" | "venue" | "location">) {
+  const primary = i18n.language === "ar" && ev.title_ar ? ev.title_ar : ev.title;
+  const place = ev.venue || ev.location;
+  const parts = [primary, ev.event_type, place].filter(Boolean);
+  return parts.join(" · ");
 }
 
 // ─── Main Page ───────────────────────────────────────────────────────────────
@@ -70,28 +91,52 @@ function getGateStatus(form: MeetingFormItem) {
 export default function AttendancePage() {
   const { t }                   = useTranslation();
   const { user, isAdmin, role } = useAuth();
-  const isAdminRole             = ["admin", "ceo", "director"].includes(role);
+  const isAdminRole             = isAdminRoleValue(role);
 
-  const [forms,        setForms]        = useState<MeetingFormItem[]>([]);
+  const [forms,        setForms]        = useState<AttendanceFormOption[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [selectedForm, setSelectedForm] = useState<string | null>(null);
+  const [loadErr,      setLoadErr]      = useState<string | null>(null);
 
   const fetchForms = useCallback(async () => {
     setLoading(true);
+    setLoadErr(null);
     try {
       const token = await getToken();
-      const param = isAdminRole ? "" : "?active=true";
-      const r = await fetch(`/api/meeting-forms${param}`, {
+      const r = await fetch(`/api/calendar/events`, {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error();
-      setForms(await r.json());
+      const events = (await r.json()) as CalendarEvent[];
+      const mapped = events.map((ev, index) => ({
+        id: ev.id,
+        meeting_no: index + 1,
+        title: ev.title,
+        title_ar: ev.title_ar,
+        start_time: ev.start_time,
+        end_time: ev.end_time,
+        venue: ev.venue,
+        location: ev.location,
+        event_type: ev.event_type,
+        organizer: ev.organizer,
+        participants: ev.participants ?? [],
+        creator_name: ev.creator_name ?? null,
+        calendar_events: ev,
+      }));
+      const visible = isAdminRole ? mapped : mapped.filter(ev => (ev.participants ?? []).includes(user?.id ?? ""));
+      visible.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
+      setForms(visible);
+      setSelectedForm(prev => {
+        if (prev && visible.some(f => f.id === prev)) return prev;
+        return visible[0]?.id ?? null;
+      });
     } catch {
       setForms([]);
+      setLoadErr(t("common.error") || "Failed to load events");
     } finally {
       setLoading(false);
     }
-  }, [isAdminRole]);
+  }, [isAdminRole, t, user?.id]);
 
   useEffect(() => { fetchForms(); }, [fetchForms]);
 
@@ -102,24 +147,11 @@ export default function AttendancePage() {
   const total      = forms.length;
   const selected = forms.find(f => f.id === selectedForm) ?? null;
 
-  // Find next closing form
-  const openForms = forms.filter(f => getGateStatus(f) === "open" && f.window_end);
-  openForms.sort((a, b) => new Date(a.window_end!).getTime() - new Date(b.window_end!).getTime());
-  const nextClose = openForms[0]?.window_end;
-  let closesInLabel = "—";
-  if (nextClose) {
-    const diffMin = Math.round((new Date(nextClose).getTime() - Date.now()) / 60000);
-    if (diffMin > 0) {
-      const h = Math.floor(diffMin / 60), m = diffMin % 60;
-      closesInLabel = h > 0 ? `${h}h ${m}m` : `${m}m`;
-    }
-  }
-
   const stats = [
     { label: t("attendance.myAttendance"), value: String(submitted),  icon: Users2 },
     { label: t("meetingForm.tabLabel"),    value: String(total),       icon: ClipboardList },
     { label: t("meetingForm.formOpen"),    value: String(open),        icon: CalendarDays },
-    { label: t("attendance.closesIn"),     value: closesInLabel,       icon: Clock3 },
+    { label: t("attendance.closesIn"),     value: "—",                 icon: Clock3 },
   ];
 
   // ── Form detail view ─────────────────────────────────────────────────────
@@ -187,18 +219,24 @@ export default function AttendancePage() {
             </SelectTrigger>
             <SelectContent>
               {forms.map(form => {
-                const ev = form.calendar_events;
-                const label = ev
-                  ? `${i18n.language === "ar" && ev.title_ar ? ev.title_ar : ev.title} · #${form.meeting_no}`
-                  : `${t("meetingForm.noEvent")} · #${form.meeting_no}`;
+                const ev = form.calendar_events ?? form;
+                const label = getEventLabel(form);
                 return (
                   <SelectItem key={form.id} value={form.id}>
-                    {label}
+                    <div className="flex flex-col">
+                      <span>{label}</span>
+                      <span className="text-xs text-muted-foreground">
+                        {formatDate(ev.start_time)}{ev.end_time ? ` · ${formatTime(ev.start_time)} - ${formatTime(ev.end_time)}` : ` · ${formatTime(ev.start_time)}`}
+                      </span>
+                    </div>
                   </SelectItem>
                 );
               })}
             </SelectContent>
           </Select>
+          {loadErr && (
+            <p className="text-sm text-red-600">{loadErr}</p>
+          )}
         </CardContent>
       </Card>
 

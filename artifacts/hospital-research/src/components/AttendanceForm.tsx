@@ -31,12 +31,22 @@ interface CalendarEvent {
 interface MeetingForm {
   id: string;
   meeting_no: number;
-  is_active: boolean;
-  window_start?: string;
-  window_end?: string;
+  title: string;
+  title_ar?: string;
+  start_time: string;
+  end_time?: string;
+  venue?: string;
+  location?: string;
+  event_type?: string;
+  organizer?: string;
+  participants?: string[];
+  creator_name?: string | null;
   calendar_events: CalendarEvent | null;
   my_submission?: Submission | null;
   my_profile?: UserProfile | null;
+  window_start?: string;
+  window_end?: string;
+  is_active?: boolean;
 }
 
 interface UserProfile {
@@ -257,7 +267,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
     );
   }
 
-  const ev       = form.calendar_events;
+  const ev       = form.calendar_events ?? form;
   const profile  = form.my_profile;
   const sigUrl   = submitted?.signature_url ?? profile?.signature_url;
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
@@ -266,27 +276,15 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
   const isSelectable = formOptions.length > 0;
 
   // Gate status
-  const now = new Date();
-  const gateStatus: "unavailable" | "pending" | "open" | "closed" | "submitted" =
-    submitted                           ? "submitted" :
-    !form.is_active                     ? "unavailable" :
-    form.window_start && now < new Date(form.window_start) ? "pending" :
-    form.window_end   && now > new Date(form.window_end)   ? "closed"  :
-    "open";
+  const gateStatus: "open" | "submitted" = submitted ? "submitted" : "open";
 
   const gateColor = {
-    unavailable: "bg-gray-100 text-gray-600 border-gray-200 dark:bg-gray-900 dark:text-gray-400",
-    pending:     "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950 dark:text-amber-400",
     open:        "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950 dark:text-emerald-400",
-    closed:      "bg-red-50 text-red-700 border-red-200 dark:bg-red-950 dark:text-red-400",
     submitted:   "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950 dark:text-blue-400",
   }[gateStatus];
 
   const gateLabel = {
-    unavailable: t("meetingForm.gateUnavailableShort"),
-    pending:     t("meetingForm.gatePendingShort"),
     open:        t("meetingForm.gateOpen"),
-    closed:      t("meetingForm.gateClosedShort"),
     submitted:   t("meetingForm.gateSubmittedShort"),
   }[gateStatus];
 
@@ -528,21 +526,6 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
               : t("meetingForm.submitBtn")}
           </Button>
 
-          {gateStatus === "pending" && form.window_start && (
-            <p className="text-xs text-center text-amber-600 dark:text-amber-400">
-              {t("meetingForm.opensIn")}: {formatTime(form.window_start)}
-            </p>
-          )}
-          {gateStatus === "closed" && (
-            <p className="text-xs text-center text-red-600 dark:text-red-400">
-              {t("meetingForm.gateClosed")}
-            </p>
-          )}
-          {gateStatus === "unavailable" && (
-            <p className="text-xs text-center text-muted-foreground">
-              {t("meetingForm.gateUnavailable")}
-            </p>
-          )}
         </div>
       )}
     </div>
