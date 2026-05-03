@@ -20,6 +20,9 @@ import type {
   AllRoleDashboardConfigs,
   Article,
   ArticleList,
+  BroadcastList,
+  BroadcastNotificationBody,
+  BroadcastResult,
   CalendarEvent,
   CreateArticleBody,
   CreateEventBody,
@@ -485,6 +488,168 @@ export const useMarkNotificationRead = <
 > => {
   return useMutation(getMarkNotificationReadMutationOptions(options));
 };
+
+/**
+ * @summary Send a notification to all users or a specific role (admin only)
+ */
+export const getBroadcastNotificationUrl = () => {
+  return `/api/notifications/broadcast`;
+};
+
+export const broadcastNotification = async (
+  broadcastNotificationBody: BroadcastNotificationBody,
+  options?: RequestInit,
+): Promise<BroadcastResult> => {
+  return customFetch<BroadcastResult>(getBroadcastNotificationUrl(), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(broadcastNotificationBody),
+  });
+};
+
+export const getBroadcastNotificationMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof broadcastNotification>>,
+    TError,
+    { data: BodyType<BroadcastNotificationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof broadcastNotification>>,
+  TError,
+  { data: BodyType<BroadcastNotificationBody> },
+  TContext
+> => {
+  const mutationKey = ["broadcastNotification"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof broadcastNotification>>,
+    { data: BodyType<BroadcastNotificationBody> }
+  > = (props) => {
+    const { data } = props ?? {};
+
+    return broadcastNotification(data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type BroadcastNotificationMutationResult = NonNullable<
+  Awaited<ReturnType<typeof broadcastNotification>>
+>;
+export type BroadcastNotificationMutationBody =
+  BodyType<BroadcastNotificationBody>;
+export type BroadcastNotificationMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Send a notification to all users or a specific role (admin only)
+ */
+export const useBroadcastNotification = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof broadcastNotification>>,
+    TError,
+    { data: BodyType<BroadcastNotificationBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof broadcastNotification>>,
+  TError,
+  { data: BodyType<BroadcastNotificationBody> },
+  TContext
+> => {
+  return useMutation(getBroadcastNotificationMutationOptions(options));
+};
+
+/**
+ * @summary List broadcast history (admin only)
+ */
+export const getListBroadcastsUrl = () => {
+  return `/api/notifications/broadcast`;
+};
+
+export const listBroadcasts = async (
+  options?: RequestInit,
+): Promise<BroadcastList> => {
+  return customFetch<BroadcastList>(getListBroadcastsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getListBroadcastsQueryKey = () => {
+  return [`/api/notifications/broadcast`] as const;
+};
+
+export const getListBroadcastsQueryOptions = <
+  TData = Awaited<ReturnType<typeof listBroadcasts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBroadcasts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getListBroadcastsQueryKey();
+
+  const queryFn: QueryFunction<Awaited<ReturnType<typeof listBroadcasts>>> = ({
+    signal,
+  }) => listBroadcasts({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof listBroadcasts>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type ListBroadcastsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof listBroadcasts>>
+>;
+export type ListBroadcastsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary List broadcast history (admin only)
+ */
+
+export function useListBroadcasts<
+  TData = Awaited<ReturnType<typeof listBroadcasts>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof listBroadcasts>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getListBroadcastsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
 
 /**
  * @summary Delete a notification

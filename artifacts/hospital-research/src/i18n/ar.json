@@ -1,5 +1,7 @@
 {
   "common": {
+    "load": "تحميل",
+    "clickToLoad": "اضغط \"تحميل\" لعرض السجل",
     "appName": "مستشفى الطائف للأطفال",
     "loading": "جاري التحميل...",
     "save": "حفظ",
@@ -49,6 +51,7 @@
     "by": "بواسطة"
   },
   "nav": {
+    "broadcast": "إشعار جماعي",
     "dashboard": "لوحة التحكم",
     "users": "المستخدمون",
     "documents": "الوثائق",
@@ -258,6 +261,34 @@
     "saving": "جاري الحفظ...",
     "changePhoto": "تغيير الصورة",
     "removePhoto": "حذف الصورة"
+  },
+  "broadcast": {
+    "title": "إشعار جماعي",
+    "subtitle": "أرسل إشعاراً لجميع الموظفين أو مجموعة دور محددة",
+    "compose": "إنشاء رسالة",
+    "history": "سجل البث",
+    "titleEn": "العنوان (إنجليزي)",
+    "titleAr": "العنوان (عربي)",
+    "messageEn": "الرسالة (إنجليزية)",
+    "messageAr": "الرسالة (عربية)",
+    "targetRole": "الجمهور المستهدف",
+    "targetAll": "جميع الموظفين",
+    "notifType": "نوع الإشعار",
+    "link": "رابط اختياري",
+    "linkPlaceholder": "https://example.com/article",
+    "send": "إرسال الإشعار",
+    "sending": "جاري الإرسال...",
+    "sent": "تم إرسال الإشعار إلى {{count}} مستلم.",
+    "sendFailed": "فشل إرسال الإشعار.",
+    "noHistory": "لم يتم إرسال أي إشعارات جماعية بعد.",
+    "recipients": "{{count}} مستلم",
+    "typeSystem": "نظام",
+    "typeDocument": "مستند",
+    "typeArticle": "مقالة",
+    "typeEvent": "حدث",
+    "typeUser": "مستخدم",
+    "preview": "معاينة",
+    "previewEmpty": "أدخل العنوان والرسالة أعلاه للمعاينة"
   },
   "notifications": {
     "title": "الإشعارات",

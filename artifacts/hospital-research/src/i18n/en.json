@@ -1,5 +1,7 @@
 {
   "common": {
+    "load": "Load",
+    "clickToLoad": "Click \"Load\" to view history",
     "appName": "Taif Children's Hospital",
     "loading": "Loading...",
     "save": "Save",
@@ -49,6 +51,7 @@
     "by": "by"
   },
   "nav": {
+    "broadcast": "Broadcast",
     "dashboard": "Dashboard",
     "users": "Users",
     "documents": "Documents",
@@ -258,6 +261,34 @@
     "saving": "Saving...",
     "changePhoto": "Change Photo",
     "removePhoto": "Remove Photo"
+  },
+  "broadcast": {
+    "title": "Broadcast Notification",
+    "subtitle": "Send a notification to all staff or a specific role group",
+    "compose": "Compose Message",
+    "history": "Broadcast History",
+    "titleEn": "Title (English)",
+    "titleAr": "Title (Arabic)",
+    "messageEn": "Message (English)",
+    "messageAr": "Message (Arabic)",
+    "targetRole": "Target Audience",
+    "targetAll": "All Staff",
+    "notifType": "Notification Type",
+    "link": "Optional Link",
+    "linkPlaceholder": "https://example.com/article",
+    "send": "Send Broadcast",
+    "sending": "Sending...",
+    "sent": "Broadcast sent to {{count}} recipient(s).",
+    "sendFailed": "Failed to send broadcast.",
+    "noHistory": "No broadcasts sent yet.",
+    "recipients": "{{count}} recipients",
+    "typeSystem": "System",
+    "typeDocument": "Document",
+    "typeArticle": "Article",
+    "typeEvent": "Event",
+    "typeUser": "User",
+    "preview": "Preview",
+    "previewEmpty": "Fill in title and message above to preview"
   },
   "notifications": {
     "title": "Notifications",

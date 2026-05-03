@@ -77,6 +77,45 @@ export const MarkNotificationReadResponse = zod.object({
 });
 
 /**
+ * @summary Send a notification to all users or a specific role (admin only)
+ */
+export const BroadcastNotificationBody = zod.object({
+  title: zod.string(),
+  title_ar: zod.string().nullish(),
+  body: zod.string(),
+  body_ar: zod.string().nullish(),
+  type: zod.string(),
+  target_role: zod.string(),
+  link: zod.string().nullish(),
+});
+
+export const BroadcastNotificationResponse = zod.object({
+  id: zod.string(),
+  recipient_count: zod.number(),
+});
+
+/**
+ * @summary List broadcast history (admin only)
+ */
+export const ListBroadcastsResponse = zod.object({
+  items: zod.array(
+    zod.object({
+      id: zod.string(),
+      created_by: zod.string(),
+      title: zod.string(),
+      title_ar: zod.string().nullish(),
+      body: zod.string(),
+      body_ar: zod.string().nullish(),
+      type: zod.string(),
+      target_role: zod.string(),
+      link: zod.string().nullish(),
+      recipient_count: zod.number(),
+      created_at: zod.string(),
+    }),
+  ),
+});
+
+/**
  * @summary Delete a notification
  */
 export const DeleteNotificationParams = zod.object({

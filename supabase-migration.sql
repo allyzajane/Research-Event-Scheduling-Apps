@@ -318,7 +318,36 @@ create policy "Service write role_dashboard_configs" on public.role_dashboard_co
 
 
 -- ─────────────────────────────────────────────────────────────
--- 11. CLEANUP FUNCTION  (free-tier DB size management)
+-- 11. NOTIFICATION BROADCASTS  (admin broadcast history)
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.notification_broadcasts (
+  id              uuid        primary key default gen_random_uuid(),
+  created_by      uuid        not null references public.profiles(id) on delete cascade,
+  title           text        not null,
+  title_ar        text,
+  body            text        not null,
+  body_ar         text,
+  type            text        not null default 'system',
+  target_role     text        not null default 'all',
+  link            text,
+  recipient_count integer     not null default 0,
+  created_at      timestamptz not null default now()
+);
+
+create index if not exists notification_broadcasts_created_at_idx on public.notification_broadcasts(created_at desc);
+
+alter table public.notification_broadcasts enable row level security;
+
+drop policy if exists "Admin read broadcasts" on public.notification_broadcasts;
+create policy "Admin read broadcasts" on public.notification_broadcasts
+  for select using (true);
+
+drop policy if exists "Service write broadcasts" on public.notification_broadcasts;
+create policy "Service write broadcasts" on public.notification_broadcasts
+  for all using (true) with check (true);
+
+-- ─────────────────────────────────────────────────────────────
+-- 12. CLEANUP FUNCTION  (free-tier DB size management)
 -- ─────────────────────────────────────────────────────────────
 -- Deletes notifications older than 30 days and caps each user at 50.
 -- Called automatically by the API after every bulk notification fan-out.

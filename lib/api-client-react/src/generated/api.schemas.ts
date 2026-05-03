@@ -373,6 +373,45 @@ export interface UpdateThemeSettingsBody {
   style?: string | null;
 }
 
+export interface BroadcastNotificationBody {
+  title: string;
+  /** @nullable */
+  title_ar?: string | null;
+  body: string;
+  /** @nullable */
+  body_ar?: string | null;
+  type: string;
+  target_role: string;
+  /** @nullable */
+  link?: string | null;
+}
+
+export interface BroadcastResult {
+  id: string;
+  recipient_count: number;
+}
+
+export interface BroadcastItem {
+  id: string;
+  created_by: string;
+  title: string;
+  /** @nullable */
+  title_ar?: string | null;
+  body: string;
+  /** @nullable */
+  body_ar?: string | null;
+  type: string;
+  target_role: string;
+  /** @nullable */
+  link?: string | null;
+  recipient_count: number;
+  created_at: string;
+}
+
+export interface BroadcastList {
+  items: BroadcastItem[];
+}
+
 export interface UpdateProfileBody {
   /** @nullable */
   full_name?: string | null;

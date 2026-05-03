@@ -19,7 +19,8 @@ const DocumentsPage = lazy(() => import("@/pages/DocumentsPage"));
 const ArticlesPage  = lazy(() => import("@/pages/ArticlesPage"));
 const CalendarPage  = lazy(() => import("@/pages/CalendarPage"));
 const SettingsPage  = lazy(() => import("@/pages/SettingsPage"));
-const ProfilePage   = lazy(() => import("@/pages/ProfilePage"));
+const ProfilePage           = lazy(() => import("@/pages/ProfilePage"));
+const NotificationBroadcastPage = lazy(() => import("@/pages/NotificationBroadcastPage"));
 
 // PageLoader — lightweight spinner shown while a chunk loads
 function PageLoader() {
@@ -88,6 +89,12 @@ function Router() {
         <Route path="/profile">
           <ProtectedRoute>
             <AppLayout><ProfilePage /></AppLayout>
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/broadcast">
+          <ProtectedRoute adminOnly>
+            <AppLayout><NotificationBroadcastPage /></AppLayout>
           </ProtectedRoute>
         </Route>
 
