@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { applyPrimaryColor } from "@/lib/theme";
 import {
   useGetLandingPage, useUpdateLandingPage, getGetLandingPageQueryKey,
   useListSections, getListSectionsQueryKey,
@@ -30,13 +31,10 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const THEME_STYLES = ["minimalist", "modern", "animated"];
-const PRESET_COLORS = [
-  { name: "Teal (Default)", value: "#2f9acb" },
-  { name: "Deep Blue", value: "#2563eb" },
-  { name: "Emerald", value: "#059669" },
-  { name: "Violet", value: "#7c3aed" },
-  { name: "Rose", value: "#e11d48" },
-  { name: "Amber", value: "#d97706" },
+// Hospital brand palette — 8 shades from primary to lightest tint
+const BRAND_PALETTE = [
+  "#2f9acb", "#3ba5d2", "#54b3d9", "#6dc2e0",
+  "#86d0e7", "#9fdded", "#b8e9f3", "#d1f3f8",
 ];
 
 const ALL_ROLES = ["admin", "ceo", "director", "doctor", "nurse", "staff"] as const;
@@ -368,27 +366,58 @@ export default function SettingsPage() {
             <CardContent className="space-y-5">
               {themeLoading ? <Skeleton className="h-32 w-full" /> : (
                 <>
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     <Label>{t("settings.primaryColor")}</Label>
-                    <div className="flex flex-wrap gap-3">
-                      {PRESET_COLORS.map(c => (
-                        <button key={c.value} onClick={() => setThemeForm({ ...themeForm, primary_color: c.value })}
-                          className={cn("flex items-center gap-2 px-3 py-2 rounded-lg border text-sm font-medium transition-all",
-                            themeForm.primary_color === c.value ? "border-foreground shadow-sm" : "border-border hover:border-muted-foreground"
-                          )}>
-                          <span className="w-4 h-4 rounded-full" style={{ backgroundColor: c.value }} />
-                          {c.name}
-                        </button>
-                      ))}
+
+                    {/* Brand palette strip */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">
+                        {i18n.language === "ar" ? "لوحة ألوان المستشفى — انقر لاختيار اللون الأساسي" : "Hospital brand palette — click any shade to set as primary"}
+                      </p>
+                      <div className="flex h-11 rounded-xl overflow-hidden border border-border shadow-sm">
+                        {BRAND_PALETTE.map((color) => (
+                          <button
+                            key={color}
+                            title={color}
+                            onClick={() => {
+                              setThemeForm(prev => ({ ...prev, primary_color: color }));
+                              applyPrimaryColor(color);
+                            }}
+                            className="flex-1 relative transition-all focus:outline-none focus:z-10"
+                            style={{ backgroundColor: color }}
+                          >
+                            {themeForm.primary_color.toLowerCase() === color.toLowerCase() && (
+                              <span className="absolute inset-0 flex items-center justify-center">
+                                <Check className="w-3.5 h-3.5 drop-shadow-[0_1px_2px_rgba(0,0,0,0.5)]" style={{ color: color < "#80" ? "#fff" : "#1a3a4a" }} />
+                              </span>
+                            )}
+                          </button>
+                        ))}
+                      </div>
+                      {/* Hex labels */}
+                      <div className="flex">
+                        {BRAND_PALETTE.map((color) => (
+                          <span key={color} className="flex-1 text-center text-[9px] text-muted-foreground font-mono leading-none pt-1 truncate">{color}</span>
+                        ))}
+                      </div>
                     </div>
-                    <div className="flex items-center gap-3 mt-3">
+
+                    {/* Custom color picker */}
+                    <div className="flex items-center gap-3">
                       <input type="color" value={themeForm.primary_color}
-                        onChange={e => setThemeForm({ ...themeForm, primary_color: e.target.value })}
-                        className="w-10 h-10 rounded-lg border border-border cursor-pointer" />
+                        onChange={e => {
+                          setThemeForm({ ...themeForm, primary_color: e.target.value });
+                          applyPrimaryColor(e.target.value);
+                        }}
+                        className="w-10 h-10 rounded-lg border border-border cursor-pointer flex-shrink-0" />
                       <Input value={themeForm.primary_color}
-                        onChange={e => setThemeForm({ ...themeForm, primary_color: e.target.value })}
+                        onChange={e => {
+                          setThemeForm({ ...themeForm, primary_color: e.target.value });
+                          if (/^#[0-9a-f]{6}$/i.test(e.target.value)) applyPrimaryColor(e.target.value);
+                        }}
                         className="w-36 font-mono" />
-                      <div className="w-10 h-10 rounded-lg shadow-inner" style={{ backgroundColor: themeForm.primary_color }} />
+                      <div className="w-10 h-10 rounded-lg shadow-inner border border-border flex-shrink-0" style={{ backgroundColor: themeForm.primary_color }} />
+                      <p className="text-xs text-muted-foreground">{i18n.language === "ar" ? "أو أدخل لونًا مخصصًا" : "Or pick a custom color"}</p>
                     </div>
                   </div>
 
