@@ -92,6 +92,13 @@ function formatDuration(start: string, end?: string) {
   return `${h}h ${m}m`;
 }
 
+function resolveStorageUrl(value?: string | null) {
+  if (!value) return undefined;
+  if (value.startsWith("http://") || value.startsWith("https://")) return value;
+  const supabaseUrl = import.meta.env.VITE_SUPABASE_URL || "";
+  return supabaseUrl ? `${supabaseUrl}/storage/v1/object/public/hospital-files/${value}` : value;
+}
+
 async function getToken() {
   const { data: { session } } = await supabase.auth.getSession();
   return session?.access_token ?? "";
@@ -205,8 +212,8 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
   const ev       = form;
   const profile  = form?.my_profile ?? null;
   const sigUrl   = profile?.signature_active_type === "drawn"
-    ? (profile?.signature_drawn_url || profile?.signature_url)
-    : (profile?.signature_url || profile?.signature_drawn_url);
+    ? (resolveStorageUrl(profile?.signature_drawn_url) || resolveStorageUrl(profile?.signature_url))
+    : (resolveStorageUrl(profile?.signature_url) || resolveStorageUrl(profile?.signature_drawn_url));
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
   const position = profile?.department || profile?.role || user?.department || user?.role || "—";
   const venue    = ev?.venue || ev?.location || "—";

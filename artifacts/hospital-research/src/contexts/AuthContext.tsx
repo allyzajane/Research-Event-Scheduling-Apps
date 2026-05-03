@@ -47,6 +47,13 @@ async function fetchProfile(session: Session): Promise<Partial<AuthUser> | null>
     });
     if (!res.ok) return null;
     const data = await res.json() as Record<string, unknown>;
+    const resolveStorageUrl = (value: unknown) => {
+      const path = typeof value === "string" ? value : "";
+      if (!path) return undefined;
+      if (path.startsWith("http://") || path.startsWith("https://")) return path;
+      const base = import.meta.env.VITE_SUPABASE_URL || "";
+      return base ? `${base}/storage/v1/object/public/hospital-files/${path}` : path;
+    };
     return {
       id:            data.id as string,
       email:         (data.email as string) || session.user.email || "",
@@ -54,8 +61,8 @@ async function fetchProfile(session: Session): Promise<Partial<AuthUser> | null>
       full_name:            (data.full_name            as string | undefined) || undefined,
       full_name_ar:         (data.full_name_ar         as string | undefined) || undefined,
       avatar_url:           (data.avatar_url           as string | undefined) || undefined,
-      signature_url:        (data.signature_url        as string | undefined) || undefined,
-      signature_drawn_url:  (data.signature_drawn_url  as string | undefined) || undefined,
+      signature_url:        resolveStorageUrl(data.signature_url),
+      signature_drawn_url:  resolveStorageUrl(data.signature_drawn_url),
       signature_active_type:(data.signature_active_type as string | undefined) || undefined,
       department:           (data.department           as string | undefined) || undefined,
     };
