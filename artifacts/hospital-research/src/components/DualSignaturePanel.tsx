@@ -16,7 +16,6 @@ interface Props {
   uploadedUrl:  string | null | undefined;
   drawnUrl:     string | null | undefined;
   activeType:   string | null | undefined;
-  sessionToken: string;
   onUpdated:    (data: {
     uploaded_url?: string | null;
     drawn_url?:    string | null;
@@ -366,7 +365,7 @@ function SignatureSlot({
 
 // ─── Main DualSignaturePanel ──────────────────────────────────────────────
 
-export default function DualSignaturePanel({ uploadedUrl, drawnUrl, activeType, sessionToken, onUpdated, targetUserId }: Props) {
+export default function DualSignaturePanel({ uploadedUrl, drawnUrl, activeType, onUpdated, targetUserId }: Props) {
   const { t } = useTranslation();
   const [localActive, setLocalActive] = useState(activeType || "uploaded");
   const [settingActive, setSettingActive] = useState(false);
@@ -380,7 +379,7 @@ export default function DualSignaturePanel({ uploadedUrl, drawnUrl, activeType, 
     setSettingActive(true); setActiveMsg(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || sessionToken;
+      const token = session?.access_token;
       const patchPath = targetUserId ? `/api/admin/users/${targetUserId}/signatures` : "/api/auth/me";
       const body      = targetUserId ? { signature_active_type: type } : { signature_active_type: type };
       const r = await fetch(patchPath, {
@@ -432,7 +431,6 @@ export default function DualSignaturePanel({ uploadedUrl, drawnUrl, activeType, 
           icon={ImageIcon}
           sigUrl={uploadedUrl}
           isActive={localActive === "uploaded"}
-          sessionToken={sessionToken}
           sigType="uploaded"
           targetPath={uploadPath}
           patchPath={patchPath}
@@ -448,7 +446,6 @@ export default function DualSignaturePanel({ uploadedUrl, drawnUrl, activeType, 
           icon={PenLine}
           sigUrl={drawnUrl}
           isActive={localActive === "drawn"}
-          sessionToken={sessionToken}
           sigType="drawn"
           targetPath={uploadPath}
           patchPath={patchPath}
