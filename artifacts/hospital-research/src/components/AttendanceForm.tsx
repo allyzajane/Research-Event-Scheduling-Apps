@@ -7,6 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
   ArrowLeft, CalendarDays, Clock, MapPin, Timer, User, PenLine,
@@ -143,9 +144,11 @@ function SectionHeader({ step, label, color }: {
 interface Props {
   formId: string;
   onBack: () => void;
+  formOptions: MeetingForm[];
+  onSelectForm: (formId: string) => void;
 }
 
-export default function AttendanceForm({ formId, onBack }: Props) {
+export default function AttendanceForm({ formId, onBack, formOptions, onSelectForm }: Props) {
   const { t }                   = useTranslation();
   const { user, isAdmin, role } = useAuth();
   const isAdminRole             = ["admin", "ceo", "director"].includes(role);
@@ -260,6 +263,7 @@ export default function AttendanceForm({ formId, onBack }: Props) {
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
   const position = profile?.department || profile?.role || user?.department || user?.role || "—";
   const venue    = ev?.venue || ev?.location || "—";
+  const isSelectable = formOptions.length > 0;
 
   // Gate status
   const now = new Date();
@@ -304,6 +308,28 @@ export default function AttendanceForm({ formId, onBack }: Props) {
           {gateLabel}
         </Badge>
       </div>
+
+      <Card className="border-border">
+        <CardHeader className="pb-4">
+          <CardTitle className="text-base">{t("meetingForm.selectEvent")}</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Select value={formId} onValueChange={onSelectForm} disabled={!isSelectable}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t("meetingForm.selectFormPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {formOptions.map(option => (
+                <SelectItem key={option.id} value={option.id}>
+                  {option.calendar_events
+                    ? `${isAr && option.calendar_events.title_ar ? option.calendar_events.title_ar : option.calendar_events.title} · #${option.meeting_no}`
+                    : `${t("meetingForm.noEvent")} · #${option.meeting_no}`}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
 
       {/* Submission success banner */}
       {submitted && (

@@ -6,9 +6,10 @@ import { supabase } from "@/lib/supabase";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import {
-  CalendarDays, ClipboardList, Clock3, Users2, ChevronRight,
-  MapPin, Clock, Loader2, AlertCircle, FileText,
+  CalendarDays, ClipboardList, Clock3, Users2,
+  MapPin, Clock, Loader2, AlertCircle,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import AttendanceForm from "@/components/AttendanceForm";
@@ -64,86 +65,6 @@ function getGateStatus(form: MeetingFormItem) {
   return "open";
 }
 
-// ─── Form card ───────────────────────────────────────────────────────────────
-
-function FormCard({ form, onClick }: { form: MeetingFormItem; onClick: () => void }) {
-  const { t }   = useTranslation();
-  const isAr    = i18n.language === "ar";
-  const ev      = form.calendar_events;
-  const status  = getGateStatus(form);
-
-  const statusConfig = {
-    open:        { label: t("meetingForm.formOpen"),        cls: "bg-emerald-100 text-emerald-700 dark:bg-emerald-900 dark:text-emerald-300" },
-    pending:     { label: t("meetingForm.formPending"),     cls: "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" },
-    closed:      { label: t("meetingForm.formExpired"),     cls: "bg-red-100 text-red-700 dark:bg-red-900 dark:text-red-300" },
-    submitted:   { label: t("meetingForm.gateSubmittedShort"), cls: "bg-blue-100 text-blue-700 dark:bg-blue-900 dark:text-blue-300" },
-    unavailable: { label: t("meetingForm.gateUnavailableShort"), cls: "bg-gray-100 text-gray-600 dark:bg-gray-800 dark:text-gray-400" },
-  }[status];
-
-  return (
-    <button
-      onClick={onClick}
-      className={cn(
-        "w-full text-left rounded-2xl border border-border bg-card hover:bg-accent/30 hover:border-primary/30",
-        "transition-all duration-200 p-5 flex items-start gap-4 group shadow-sm hover:shadow-md",
-      )}
-    >
-      {/* Icon */}
-      <div className="w-11 h-11 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 mt-0.5">
-        <FileText className="w-5 h-5 text-primary" />
-      </div>
-
-      {/* Body */}
-      <div className="flex-1 min-w-0 space-y-1.5">
-        <div className="flex items-start justify-between gap-2">
-          <span className="font-semibold text-foreground text-base leading-snug truncate">
-            {isAr && ev?.title_ar ? ev.title_ar : ev?.title || t("meetingForm.noEvent")}
-          </span>
-          <Badge className={cn("text-xs shrink-0", statusConfig.cls)}>
-            {statusConfig.label}
-          </Badge>
-        </div>
-
-        <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-muted-foreground">
-          {form.meeting_no && (
-            <span className="flex items-center gap-1">
-              <ClipboardList className="w-3 h-3" />
-              {t("meetingForm.meetingNo")} #{form.meeting_no}
-            </span>
-          )}
-          {ev?.start_time && (
-            <span className="flex items-center gap-1">
-              <CalendarDays className="w-3 h-3" />
-              {formatDate(ev.start_time)}
-            </span>
-          )}
-          {ev?.start_time && (
-            <span className="flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {formatTime(ev.start_time)}
-              {ev.end_time ? ` – ${formatTime(ev.end_time)}` : ""}
-            </span>
-          )}
-          {(ev?.venue || ev?.location) && (
-            <span className="flex items-center gap-1">
-              <MapPin className="w-3 h-3" />
-              {ev.venue || ev.location}
-            </span>
-          )}
-        </div>
-
-        {status === "submitted" && form.my_submission && (
-          <p className="text-xs text-blue-600 dark:text-blue-400 font-medium">
-            {t("meetingForm.submittedAs")} #{form.my_submission.submission_no}
-          </p>
-        )}
-      </div>
-
-      <ChevronRight className="w-4 h-4 text-muted-foreground group-hover:text-primary transition-colors flex-shrink-0 mt-3" />
-    </button>
-  );
-}
-
 // ─── Main Page ───────────────────────────────────────────────────────────────
 
 export default function AttendancePage() {
@@ -179,6 +100,7 @@ export default function AttendancePage() {
   const submitted  = forms.filter(f => f.my_submission).length;
   const open       = forms.filter(f => getGateStatus(f) === "open").length;
   const total      = forms.length;
+  const selected = forms.find(f => f.id === selectedForm) ?? null;
 
   // Find next closing form
   const openForms = forms.filter(f => getGateStatus(f) === "open" && f.window_end);
@@ -208,6 +130,8 @@ export default function AttendancePage() {
         <AttendanceForm
           formId={selectedForm}
           onBack={() => { setSelectedForm(null); fetchForms(); }}
+          formOptions={forms}
+          onSelectForm={setSelectedForm}
         />
       </div>
     );
@@ -249,6 +173,35 @@ export default function AttendancePage() {
         ))}
       </div>
 
+      <Card className="border-border">
+        <CardContent className="p-5 space-y-4">
+          <div className="space-y-1">
+            <h2 className="text-base font-semibold text-foreground">{t("meetingForm.selectEvent")}</h2>
+            <p className="text-sm text-muted-foreground">
+              {isAdminRole ? t("meetingForm.noForms") : t("meetingForm.noActiveForms")}
+            </p>
+          </div>
+          <Select value={selectedForm ?? ""} onValueChange={setSelectedForm} disabled={forms.length === 0}>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder={t("meetingForm.selectFormPlaceholder")} />
+            </SelectTrigger>
+            <SelectContent>
+              {forms.map(form => {
+                const ev = form.calendar_events;
+                const label = ev
+                  ? `${i18n.language === "ar" && ev.title_ar ? ev.title_ar : ev.title} · #${form.meeting_no}`
+                  : `${t("meetingForm.noEvent")} · #${form.meeting_no}`;
+                return (
+                  <SelectItem key={form.id} value={form.id}>
+                    {label}
+                  </SelectItem>
+                );
+              })}
+            </SelectContent>
+          </Select>
+        </CardContent>
+      </Card>
+
       {/* Form list */}
       <div className="space-y-3">
         <div className="flex items-center justify-between">
@@ -274,13 +227,43 @@ export default function AttendancePage() {
           </div>
         ) : (
           <div className="space-y-3">
-            {forms.map(form => (
-              <FormCard
-                key={form.id}
-                form={form}
-                onClick={() => setSelectedForm(form.id)}
-              />
-            ))}
+            {selected && (
+              <Card className="border-border">
+                <CardContent className="p-5 space-y-3">
+                  <div className="flex items-center justify-between gap-3 flex-wrap">
+                    <div>
+                      <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("meetingForm.tabLabel")}</p>
+                      <h3 className="text-lg font-semibold text-foreground">
+                        {i18n.language === "ar" && selected.calendar_events?.title_ar
+                          ? selected.calendar_events.title_ar
+                          : selected.calendar_events?.title || t("meetingForm.noEvent")}
+                      </h3>
+                    </div>
+                    <Badge variant="outline">{t("meetingForm.meetingNo")} #{selected.meeting_no}</Badge>
+                  </div>
+                  <div className="grid sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
+                    {selected.calendar_events?.start_time && (
+                      <span className="flex items-center gap-2">
+                        <CalendarDays className="w-4 h-4" />
+                        {formatDate(selected.calendar_events.start_time)}
+                      </span>
+                    )}
+                    {selected.calendar_events?.start_time && (
+                      <span className="flex items-center gap-2">
+                        <Clock className="w-4 h-4" />
+                        {formatTime(selected.calendar_events.start_time)}
+                      </span>
+                    )}
+                    {(selected.calendar_events?.venue || selected.calendar_events?.location) && (
+                      <span className="flex items-center gap-2">
+                        <MapPin className="w-4 h-4" />
+                        {selected.calendar_events.venue || selected.calendar_events.location}
+                      </span>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         )}
       </div>
