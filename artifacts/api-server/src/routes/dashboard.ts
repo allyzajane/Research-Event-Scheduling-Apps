@@ -69,4 +69,35 @@ router.get("/dashboard/summary", requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /dashboard/online-count ───────────────────────────────────────────────
+// Returns staff active within the last 5 minutes via last_seen_at.
+// Gracefully returns count=0 if the column hasn't been added yet.
+router.get("/dashboard/online-count", requireAuth, async (req, res) => {
+  try {
+    const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, full_name_ar, role, avatar_url")
+      .gt("last_seen_at", fiveMinutesAgo)
+      .eq("is_active", true)
+      .order("last_seen_at" as never, { ascending: false })
+      .limit(20);
+
+    if (error) {
+      // Column not yet migrated — return graceful zero
+      if (error.message?.includes("last_seen_at") || error.code === "PGRST205") {
+        res.json({ count: 0, users: [], column_missing: true });
+        return;
+      }
+      throw error;
+    }
+
+    res.json({ count: data?.length ?? 0, users: data ?? [] });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get online count");
+    res.json({ count: 0, users: [] });
+  }
+});
+
 export default router;

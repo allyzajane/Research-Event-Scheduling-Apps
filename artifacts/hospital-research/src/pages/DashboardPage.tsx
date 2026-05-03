@@ -15,6 +15,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
 import { formatDateAST } from "@/lib/ast";
+import { OnlineUsersCard } from "@/components/OnlineUsersCard";
 
 function formatDate(date: string) {
   return formatDateAST(date, i18n.language === "ar" ? "ar" : "en");
@@ -75,7 +76,10 @@ export default function DashboardPage() {
   const showUpcomingEvents = has("upcoming_events");
   const showQuickActions   = has("quick_actions");
 
-  const listCount = [showRecentDocs, showRecentArticles, showUpcomingEvents, showQuickActions].filter(Boolean).length;
+  // Online users card is always shown — true real-time value regardless of widget config
+  const showOnlineUsers = true;
+
+  const listCount = [showOnlineUsers, showRecentDocs, showRecentArticles, showUpcomingEvents, showQuickActions].filter(Boolean).length;
   const listCols  = listCount === 0 ? 0 : listCount === 1 ? 1 : listCount === 2 ? 2 : 3;
 
   if (configLoading) {
@@ -130,6 +134,9 @@ export default function DashboardPage() {
       {/* Bottom grid */}
       {listCount > 0 && (
         <div className={`grid gap-6 ${listCols === 1 ? "grid-cols-1" : listCols === 2 ? "md:grid-cols-2" : "lg:grid-cols-3"}`}>
+
+          {/* Online Users — always first */}
+          {showOnlineUsers && <OnlineUsersCard />}
 
           {/* Recent Documents */}
           {showRecentDocs && (
