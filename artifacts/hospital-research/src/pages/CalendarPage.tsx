@@ -110,6 +110,7 @@ interface EventForm {
   title: string;
   title_ar: string;
   description: string;
+  description_ar: string;
   event_type: string;
   organizer: string;
   venue: string;
@@ -125,6 +126,7 @@ const emptyForm = (dateStr?: string): EventForm => ({
   title: "",
   title_ar: "",
   description: "",
+  description_ar: "",
   event_type: "event",
   organizer: "",
   venue: "",
@@ -145,6 +147,7 @@ function eventToForm(ev: CalendarEvent): EventForm {
     title: ev.title,
     title_ar: ev.title_ar || "",
     description: ev.description || "",
+    description_ar: ev.description_ar || "",
     event_type: ev.event_type,
     organizer: ev.organizer || "",
     venue: ev.venue || ev.location || "",
@@ -435,15 +438,27 @@ function EventFormFields({ val, onChange, isEdit }: FormFieldsProps) {
         </div>
       )}
 
-      {/* Description */}
-      <div className="space-y-1.5">
-        <Label>Description</Label>
-        <Textarea
-          value={val.description}
-          onChange={e => onChange({ ...val, description: e.target.value })}
-          placeholder="Add notes, agenda, or any details…"
-          className="min-h-[80px] resize-none"
-        />
+      {/* Description — bilingual side by side */}
+      <div className="grid grid-cols-2 gap-3">
+        <div className="space-y-1.5">
+          <Label>Description</Label>
+          <Textarea
+            value={val.description}
+            onChange={e => onChange({ ...val, description: e.target.value })}
+            placeholder="Add notes, agenda, or any details…"
+            className="min-h-[80px] resize-none"
+          />
+        </div>
+        <div className="space-y-1.5">
+          <Label>الوصف بالعربي</Label>
+          <Textarea
+            value={val.description_ar}
+            onChange={e => onChange({ ...val, description_ar: e.target.value })}
+            placeholder="أضف ملاحظات أو جدول أعمال…"
+            dir="rtl"
+            className="min-h-[80px] resize-none"
+          />
+        </div>
       </div>
     </div>
   );
@@ -549,6 +564,7 @@ export default function CalendarPage() {
           title: form.title,
           title_ar: form.title_ar || null,
           description: form.description || null,
+          description_ar: form.description_ar || null,
           event_type: form.event_type,
           organizer: form.organizer || null,
           venue: form.venue || null,
@@ -579,6 +595,7 @@ export default function CalendarPage() {
           title: f.title,
           title_ar: f.title_ar || null,
           description: f.description || null,
+          description_ar: f.description_ar || null,
           event_type: f.event_type,
           organizer: f.organizer || null,
           venue: f.venue || null,
