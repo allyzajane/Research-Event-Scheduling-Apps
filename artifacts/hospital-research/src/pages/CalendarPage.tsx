@@ -781,13 +781,24 @@ export default function CalendarPage() {
                             </div>
                           )}
                           <div className="flex items-center gap-1.5 mt-1.5">
-                            <Badge
-                              variant="outline"
-                              className="text-[10px] px-1.5 py-0 h-4"
-                              style={{ borderColor: color, color }}
-                            >
-                              {ev.event_type}
-                            </Badge>
+                            {pinStatus === "past" ? (
+                              <Badge
+                                className="text-[10px] px-2 py-0.5 h-auto font-semibold bg-red-100 text-red-600 border-red-300"
+                                variant="outline"
+                              >
+                                Past
+                                {ev.organizer ? ` · ${ev.organizer}` : ""}
+                                {ev.event_type ? ` · ${ev.event_type.charAt(0).toUpperCase() + ev.event_type.slice(1)}` : ""}
+                              </Badge>
+                            ) : (
+                              <Badge
+                                variant="outline"
+                                className="text-[10px] px-1.5 py-0 h-4"
+                                style={{ borderColor: color, color }}
+                              >
+                                {ev.event_type}
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
