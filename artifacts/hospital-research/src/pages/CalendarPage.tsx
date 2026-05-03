@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -732,9 +733,10 @@ export default function CalendarPage() {
                   const pinStatus = getPinStatus(ev);
                   const color = PIN_COLORS[pinStatus];
                   const isPresent = pinStatus === "present";
-                  return (
+                  const tooltipDesc = isAr && ev.description_ar ? ev.description_ar : ev.description;
+
+                  const cardInner = (
                     <div
-                      key={ev.id}
                       className="p-3 rounded-xl border border-border bg-card hover:border-primary/30 transition-all cursor-pointer group"
                       onClick={() => setEditEvent({ id: ev.id, form: eventToForm(ev) })}
                     >
@@ -766,14 +768,11 @@ export default function CalendarPage() {
                               🏢 {ev.organizer}
                             </p>
                           )}
-                          {(() => {
-                            const desc = isAr && ev.description_ar ? ev.description_ar : ev.description;
-                            return desc ? (
-                              <p className="text-xs text-muted-foreground truncate mt-0.5 italic">
-                                {desc}
-                              </p>
-                            ) : null;
-                          })()}
+                          {tooltipDesc && (
+                            <p className="text-xs text-muted-foreground truncate mt-0.5 italic">
+                              {tooltipDesc}
+                            </p>
+                          )}
                           {Array.isArray(ev.participants) && ev.participants.length > 0 && (
                             <div className="flex items-center gap-1 mt-1">
                               <UserCheck className="w-3 h-3 text-muted-foreground" />
@@ -802,6 +801,23 @@ export default function CalendarPage() {
                           </div>
                         </div>
                       </div>
+                    </div>
+                  );
+
+                  return (
+                    <div key={ev.id}>
+                      {tooltipDesc ? (
+                        <Tooltip>
+                          <TooltipTrigger asChild>{cardInner}</TooltipTrigger>
+                          <TooltipContent
+                            side="left"
+                            className="max-w-64 text-xs leading-relaxed whitespace-pre-wrap"
+                            dir={isAr && ev.description_ar ? "rtl" : "ltr"}
+                          >
+                            {tooltipDesc}
+                          </TooltipContent>
+                        </Tooltip>
+                      ) : cardInner}
                     </div>
                   );
                 })}
