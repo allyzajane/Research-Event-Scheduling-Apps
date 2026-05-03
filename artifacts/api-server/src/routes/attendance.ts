@@ -83,21 +83,30 @@ router.get("/attendance/today", requireAuth, async (req, res) => {
 // ── GET /attendance/stats ────────────────────────────────────────────────────
 router.get("/attendance/stats", requireAuth, async (req, res) => {
   try {
-    const { user_id } = req.query as Record<string, string>;
+    const { user_id, date_from, date_to } = req.query as Record<string, string>;
     const reqUser = (req as any).user;
     const isAdmin = ADMIN_ROLES.includes(reqUser?.role);
     const targetId = isAdmin && user_id ? user_id : reqUser.id;
 
     const today = getASTDateStr();
     const [year, month] = today.split("-").map(Number);
-    const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
-    const nextMonth  = month === 12
+    const defaultStart = `${year}-${String(month).padStart(2, "0")}-01`;
+    const defaultEnd   = month === 12
       ? `${year + 1}-01-01`
       : `${year}-${String(month + 1).padStart(2, "0")}-01`;
 
-    const { data: list } = await supabaseAdmin
+    let q = supabaseAdmin
       .from("attendance").select("clock_in, clock_out, status")
-      .eq("user_id", targetId).gte("date", monthStart).lt("date", nextMonth);
+      .eq("user_id", targetId);
+
+    if (date_from || date_to) {
+      if (date_from) q = q.gte("date", date_from);
+      if (date_to)   q = q.lte("date", date_to);
+    } else {
+      q = q.gte("date", defaultStart).lt("date", defaultEnd);
+    }
+
+    const { data: list } = await q;
 
     const records = list ?? [];
     const presentDays = records.filter(r =>

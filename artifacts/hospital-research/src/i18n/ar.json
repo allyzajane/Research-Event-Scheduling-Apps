@@ -453,7 +453,10 @@
     "absent": "غائب",
     "exportCsv": "تصدير CSV",
     "exportingCsv": "جارٍ التصدير...",
-    "exportedCsv": "تم تصدير ملف CSV بنجاح"
+    "exportedCsv": "تم تصدير ملف CSV بنجاح",
+    "dateFrom": "من",
+    "dateTo": "إلى",
+    "resetRange": "هذا الشهر"
   },
   "notifications": {
     "title": "الإشعارات",

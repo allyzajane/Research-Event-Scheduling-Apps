@@ -138,6 +138,13 @@ export default function AttendancePage() {
   const [deleteTarget, setDeleteTarget] = useState<string | null>(null);
   const [liveMs, setLiveMs] = useState(0);
 
+  // ── Date range (default: first of current AST month → today) ──────────────
+  const todayAst = getASTDateStr();
+  const defaultMonthStart = todayAst.substring(0, 7) + "-01";
+  const [dateFrom, setDateFrom] = useState<string>(defaultMonthStart);
+  const [dateTo,   setDateTo]   = useState<string>(todayAst);
+  const isDefaultRange = dateFrom === defaultMonthStart && dateTo === todayAst;
+
   const auth = () => ({ Authorization: `Bearer ${session?.access_token}` });
 
   // ── Users list (admin only) ────────────────────────────────────────────────
@@ -162,24 +169,31 @@ export default function AttendancePage() {
     refetchInterval: 60_000,
   });
 
-  // ── Stats (follows filter) ─────────────────────────────────────────────────
+  // ── Stats (follows filter + date range) ───────────────────────────────────
   const specificUser = filterUser !== "__all__" ? filterUser : null;
 
+  const buildQS = (extra: Record<string, string | null | undefined> = {}) => {
+    const p = new URLSearchParams();
+    if (specificUser) p.set("user_id", specificUser);
+    if (dateFrom)     p.set("date_from", dateFrom);
+    if (dateTo)       p.set("date_to", dateTo);
+    Object.entries(extra).forEach(([k, v]) => { if (v) p.set(k, v); });
+    return p.toString() ? `?${p}` : "";
+  };
+
   const { data: stats, isLoading: loadingStats } = useQuery<AttendanceStats>({
-    queryKey: ["attendance/stats", filterUser],
+    queryKey: ["attendance/stats", filterUser, dateFrom, dateTo],
     queryFn: async () => {
-      const qs = specificUser ? `?user_id=${specificUser}` : "";
-      const r = await fetch(`/api/attendance/stats${qs}`, { headers: auth() });
+      const r = await fetch(`/api/attendance/stats${buildQS()}`, { headers: auth() });
       return r.json();
     },
   });
 
-  // ── History (follows filter) ───────────────────────────────────────────────
+  // ── History (follows filter + date range) ──────────────────────────────────
   const { data: records = [], isLoading: loadingHistory } = useQuery<AttendanceRecord[]>({
-    queryKey: ["attendance/list", filterUser],
+    queryKey: ["attendance/list", filterUser, dateFrom, dateTo],
     queryFn: async () => {
-      const qs = specificUser ? `?user_id=${specificUser}` : "";
-      const r = await fetch(`/api/attendance${qs}`, { headers: auth() });
+      const r = await fetch(`/api/attendance${buildQS()}`, { headers: auth() });
       if (!r.ok) return [];
       return r.json();
     },
@@ -247,29 +261,74 @@ export default function AttendancePage() {
     <div className="p-6 space-y-6 max-w-5xl mx-auto">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("attendance.title")}</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            {formatDateAST(new Date(), isAr ? "ar" : "en")} · KSA
-          </p>
+      <div className="flex flex-col gap-3">
+        <div className="flex items-start justify-between gap-4 flex-wrap">
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">{t("attendance.title")}</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">
+              {formatDateAST(new Date(), isAr ? "ar" : "en")} · KSA
+            </p>
+          </div>
+
+          {isAdmin && (
+            <Select value={filterUser} onValueChange={setFilterUser}>
+              <SelectTrigger className="w-52 h-9">
+                <SelectValue placeholder={t("attendance.allUsers")} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__all__">{t("attendance.allUsers")}</SelectItem>
+                {users.map(u => (
+                  <SelectItem key={u.id} value={u.id}>
+                    {(isAr && u.full_name_ar) ? u.full_name_ar : u.full_name ?? u.email}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
         </div>
 
-        {isAdmin && (
-          <Select value={filterUser} onValueChange={setFilterUser}>
-            <SelectTrigger className="w-52 h-9">
-              <SelectValue placeholder={t("attendance.allUsers")} />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="__all__">{t("attendance.allUsers")}</SelectItem>
-              {users.map(u => (
-                <SelectItem key={u.id} value={u.id}>
-                  {(isAr && u.full_name_ar) ? u.full_name_ar : u.full_name ?? u.email}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        )}
+        {/* ── Date range row ────────────────────────────────────────────── */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+              {t("attendance.dateFrom")}
+            </label>
+            <input
+              type="date"
+              value={dateFrom}
+              max={dateTo || todayAst}
+              onChange={e => setDateFrom(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2.5 text-sm text-foreground
+                         focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+                         [color-scheme:light] dark:[color-scheme:dark]"
+            />
+          </div>
+          <div className="flex items-center gap-1.5">
+            <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap">
+              {t("attendance.dateTo")}
+            </label>
+            <input
+              type="date"
+              value={dateTo}
+              min={dateFrom}
+              max={todayAst}
+              onChange={e => setDateTo(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2.5 text-sm text-foreground
+                         focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-1
+                         [color-scheme:light] dark:[color-scheme:dark]"
+            />
+          </div>
+          {!isDefaultRange && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs px-3 text-muted-foreground hover:text-foreground"
+              onClick={() => { setDateFrom(defaultMonthStart); setDateTo(todayAst); }}
+            >
+              {t("attendance.resetRange")}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* ── Clock-in / Clock-out hero (own attendance only) ─────────────── */}
@@ -388,7 +447,7 @@ export default function AttendancePage() {
           {
             label: t("attendance.presentDays"),
             value: loadingStats ? null : (stats?.present_days ?? 0),
-            sub: t("attendance.thisMonth"),
+            sub: isDefaultRange ? t("attendance.thisMonth") : `${dateFrom} → ${dateTo}`,
             icon: UserCheck,
             color: "text-emerald-600",
             bg: "bg-emerald-50 dark:bg-emerald-950/30",
@@ -396,7 +455,7 @@ export default function AttendancePage() {
           {
             label: t("attendance.totalHours"),
             value: loadingStats ? null : `${stats?.total_hours ?? 0}h`,
-            sub: t("attendance.thisMonth"),
+            sub: isDefaultRange ? t("attendance.thisMonth") : `${dateFrom} → ${dateTo}`,
             icon: Clock8,
             color: "text-blue-600",
             bg: "bg-blue-50 dark:bg-blue-950/30",
@@ -404,7 +463,7 @@ export default function AttendancePage() {
           {
             label: t("attendance.totalRecords"),
             value: loadingStats ? null : (stats?.total_records ?? 0),
-            sub: t("attendance.thisMonth"),
+            sub: isDefaultRange ? t("attendance.thisMonth") : `${dateFrom} → ${dateTo}`,
             icon: Calendar,
             color: "text-violet-600",
             bg: "bg-violet-50 dark:bg-violet-950/30",
@@ -447,13 +506,14 @@ export default function AttendancePage() {
                   size="sm"
                   className="h-7 gap-1.5 text-xs px-3"
                   onClick={() => {
-                    const now = new Date();
-                    const ym = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
                     const suffix = specificUser
                       ? (filteredUser?.full_name ?? specificUser).replace(/\s+/g, "-")
                       : "all-users";
+                    const rangeTag = dateFrom === dateTo
+                      ? dateFrom
+                      : `${dateFrom}_${dateTo}`;
                     const csv = buildCsv(records, isAdmin);
-                    downloadCsv(csv, `attendance-${ym}-${suffix}.csv`);
+                    downloadCsv(csv, `attendance-${rangeTag}-${suffix}.csv`);
                     toast({ title: t("attendance.exportedCsv") });
                   }}
                 >

@@ -453,7 +453,10 @@
     "absent": "Absent",
     "exportCsv": "Export CSV",
     "exportingCsv": "Exporting...",
-    "exportedCsv": "CSV exported successfully"
+    "exportedCsv": "CSV exported successfully",
+    "dateFrom": "From",
+    "dateTo": "To",
+    "resetRange": "This Month"
   },
   "notifications": {
     "title": "Notifications",
