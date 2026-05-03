@@ -132,20 +132,35 @@ create policy "articles_all" on public.articles using (true) with check (true);
 
 -- calendar_events
 create table if not exists public.calendar_events (
-  id uuid primary key default gen_random_uuid(),
-  title text not null,
-  title_ar text,
-  event_type text not null default 'event'
-    check (event_type in ('event','meeting','announcement')),
-  start_time timestamptz not null,
-  end_time timestamptz,
-  all_day boolean not null default false,
-  location text,
-  color text default '#2f9acb',
-  created_by uuid references public.profiles(id) on delete set null,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  id            uuid        primary key default gen_random_uuid(),
+  title         text        not null,
+  title_ar      text,
+  event_type    text        not null default 'event'
+                            check (event_type in ('event','meeting','announcement')),
+  description   text,
+  description_ar text,
+  organizer     text,
+  venue         text,
+  location      text,
+  participants  jsonb       not null default '[]'::jsonb,
+  event_status  text        not null default 'active',
+  start_time    timestamptz not null,
+  end_time      timestamptz,
+  all_day       boolean     not null default false,
+  color         text        default '#2f9acb',
+  created_by    uuid        references public.profiles(id) on delete set null,
+  created_at    timestamptz not null default now(),
+  updated_at    timestamptz not null default now()
 );
+
+-- Patch: add missing columns to existing tables (safe to re-run)
+alter table public.calendar_events
+  add column if not exists description     text,
+  add column if not exists description_ar  text,
+  add column if not exists organizer       text,
+  add column if not exists venue           text,
+  add column if not exists participants    jsonb    not null default '[]'::jsonb,
+  add column if not exists event_status    text     not null default 'active';
 
 alter table public.calendar_events enable row level security;
 drop policy if exists "calendar_events_all" on public.calendar_events;
