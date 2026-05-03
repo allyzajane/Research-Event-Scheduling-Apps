@@ -9,6 +9,7 @@ import {
   Settings, User, LogOut, Menu, X, ChevronRight, Hospital, Megaphone
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
+import { EventInviteToast } from "@/components/EventInviteToast";
 import { Button } from "@/components/ui/button";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
@@ -200,6 +201,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
           {children}
         </main>
       </div>
+
+      {/* Event invitation toast — shown once per login session */}
+      <EventInviteToast />
     </div>
   );
 }

@@ -3,6 +3,43 @@ import { requireAuth } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 import { notifyAllUsers } from "../lib/notifyAll";
 
+// ── Notify specific participants about an event invitation ─────────────────────
+async function notifyParticipants(
+  participantIds: string[],
+  eventTitle: string,
+  startTime: string,
+  venue: string | null,
+  excludeUserId: string,
+): Promise<void> {
+  try {
+    const ids = participantIds.filter(id => id && id !== excludeUserId);
+    if (ids.length === 0) return;
+
+    const dateLabel = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Riyadh",
+      weekday: "short", month: "short", day: "numeric",
+      hour: "2-digit", minute: "2-digit", hour12: true,
+    }).format(new Date(startTime));
+
+    const venueStr = venue ? ` · ${venue}` : "";
+
+    const rows = ids.map(userId => ({
+      user_id:  userId,
+      type:     "event",
+      title:    "You've been invited to an event",
+      title_ar: "تمت دعوتك إلى فعالية",
+      body:     `"${eventTitle}" — ${dateLabel}${venueStr}`,
+      body_ar:  `"${eventTitle}" — ${dateLabel}${venueStr}`,
+      link:     "/calendar",
+      is_read:  false,
+    }));
+
+    await supabaseAdmin.from("notifications").insert(rows);
+  } catch {
+    // Silent — notifications must never break the main action
+  }
+}
+
 const router = Router();
 
 // Columns that may exist in newer schema but not older deployments
@@ -140,7 +177,19 @@ router.post("/calendar/events", requireAuth, async (req, res) => {
       exclude_user_id: req.user!.id,
     }).catch(() => {});
 
-    res.status(201).json(shapeEvent(data as unknown as Record<string, unknown>));
+    // Notify each named participant individually
+    const shaped = shapeEvent(data as unknown as Record<string, unknown>);
+    if (shaped.participants.length > 0) {
+      notifyParticipants(
+        shaped.participants as string[],
+        data.title as string,
+        data.start_time as string,
+        (data as Record<string, unknown>).venue as string | null,
+        req.user!.id,
+      ).catch(() => {});
+    }
+
+    res.status(201).json(shaped);
   } catch (err) {
     req.log.error({ err }, "Failed to create event");
     res.status(500).json({ error: "Internal server error" });
@@ -177,6 +226,19 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
 // ── PATCH /calendar/events/:id ────────────────────────────────────────────────
 router.patch("/calendar/events/:id", requireAuth, async (req, res) => {
   try {
+    const eventId = req.params.id as string;
+
+    // Fetch existing participants before overwriting, so we can diff
+    const { data: existing } = await supabaseAdmin
+      .from("calendar_events")
+      .select("participants, title, start_time, venue")
+      .eq("id", eventId)
+      .single();
+
+    const oldParticipants: string[] = Array.isArray(existing?.participants)
+      ? (existing.participants as string[])
+      : [];
+
     const payload: Record<string, unknown> = { updated_at: new Date().toISOString() };
 
     const allowed = [...CORE_FIELDS, ...OPTIONAL_FIELDS];
@@ -189,11 +251,29 @@ router.patch("/calendar/events/:id", requireAuth, async (req, res) => {
       }
     }
 
-    const { data, error } = await updateEvent(req.params.id, payload);
+    const { data, error } = await updateEvent(eventId, payload);
 
     if (error || !data) {
       res.status(404).json({ error: "Event not found or update failed" });
       return;
+    }
+
+    // Notify only participants who were not in the previous list
+    const newParticipants: string[] = Array.isArray(payload.participants)
+      ? (payload.participants as string[])
+      : oldParticipants;
+
+    const addedParticipants = newParticipants.filter(id => !oldParticipants.includes(id));
+
+    if (addedParticipants.length > 0) {
+      const ev = data as Record<string, unknown>;
+      notifyParticipants(
+        addedParticipants,
+        (ev.title ?? existing?.title ?? "") as string,
+        (ev.start_time ?? existing?.start_time ?? "") as string,
+        (ev.venue ?? existing?.venue ?? null) as string | null,
+        req.user!.id,
+      ).catch(() => {});
     }
 
     res.json(shapeEvent(data as unknown as Record<string, unknown>));
