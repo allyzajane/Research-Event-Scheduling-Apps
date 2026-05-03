@@ -657,7 +657,11 @@ export default function CalendarPage() {
 
       doc.setFontSize(10);
       doc.setFont("helvetica", "normal");
-      doc.text(`Calendar Schedule — ${monthLabel}`, pageW / 2, 17, { align: "center" });
+      doc.text(`Calendar Schedule — ${monthLabel}`, pageW / 2, 15, { align: "center" });
+
+      // Arabic subtitle line
+      doc.setFontSize(9);
+      doc.text("جدول الفعاليات — مستشفى الطائف للأطفال", pageW / 2, 20, { align: "center" });
 
       doc.setTextColor(0, 0, 0);
 
@@ -679,13 +683,14 @@ export default function CalendarPage() {
           : formatTimeAST(ev.start_time, "en") +
             (ev.end_time ? ` – ${formatTimeAST(ev.end_time, "en")}` : "");
 
-        const titleStr = ev.title + (ev.title_ar ? `\n${ev.title_ar}` : "");
-        const descStr = ev.description || "";
+        // Description: prefer Arabic when app is in Arabic mode
+        const descStr = isAr && ev.description_ar ? ev.description_ar : (ev.description || "");
 
         return [
           formatDateAST(ev.start_time, "en"),
           timeStr,
-          titleStr,
+          ev.title || "—",
+          ev.title_ar || "—",
           ev.event_type.charAt(0).toUpperCase() + ev.event_type.slice(1),
           ev.organizer || "—",
           ev.venue || "—",
@@ -694,40 +699,46 @@ export default function CalendarPage() {
         ];
       });
 
+      // Column indices: 0=Date 1=Time 2=TitleEN 3=TitleAR 4=Type 5=Organizer 6=Venue 7=Status 8=Desc
       autoTable(doc, {
-        head: [["Date", "Time", "Event", "Type", "Organizer", "Venue", "Status", "Description"]],
+        head: [[
+          "Date", "Time",
+          "Event Title", "العنوان بالعربي",
+          "Type", "Organizer", "Venue", "Status", "Description",
+        ]],
         body: rows,
         startY: 26,
-        styles: { fontSize: 8, cellPadding: 2.5, overflow: "linebreak" },
+        styles: { fontSize: 7.5, cellPadding: 2.5, overflow: "linebreak" },
         headStyles: {
           fillColor: [47, 154, 203],
           textColor: 255,
           fontStyle: "bold",
-          fontSize: 8.5,
+          fontSize: 8,
         },
         alternateRowStyles: { fillColor: [242, 249, 253] },
         columnStyles: {
-          0: { cellWidth: 26 },
-          1: { cellWidth: 32 },
-          2: { cellWidth: 55 },
-          3: { cellWidth: 22 },
-          4: { cellWidth: 26 },
-          5: { cellWidth: 40 },
-          6: { cellWidth: 20 },
-          7: { cellWidth: 60 },
+          0: { cellWidth: 25 },
+          1: { cellWidth: 28 },
+          2: { cellWidth: 38 },
+          3: { cellWidth: 35, halign: "right" },
+          4: { cellWidth: 20 },
+          5: { cellWidth: 22 },
+          6: { cellWidth: 35 },
+          7: { cellWidth: 18 },
+          8: { cellWidth: 40 },
         },
         didDrawCell: (data) => {
-          // Colour status cell text
-          if (data.section === "body" && data.column.index === 6) {
+          // Colour the Status column (index 7)
+          if (data.section === "body" && data.column.index === 7) {
             const val = String(data.cell.raw);
             const colour: [number, number, number] =
-              val === "Past" ? [220, 38, 38]
-              : val === "Canceled" ? [217, 119, 6]
+              val === "Past"        ? [220, 38, 38]
+              : val === "Canceled"  ? [217, 119, 6]
               : val === "Rescheduled" ? [14, 165, 233]
               : [34, 197, 94];
             doc.setTextColor(...colour);
-            doc.setFontSize(8);
-            doc.text(val, data.cell.x + 2, data.cell.y + data.cell.height / 2 + 1);
+            doc.setFontSize(7.5);
+            doc.text(val, data.cell.x + 1.5, data.cell.y + data.cell.height / 2 + 1);
             doc.setTextColor(0, 0, 0);
           }
         },
