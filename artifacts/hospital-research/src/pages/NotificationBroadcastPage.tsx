@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "@/contexts/AuthContext";
+import { formatDateTimeAST } from "@/lib/ast";
 import i18n from "i18next";
 import {
   Megaphone, Send, Clock, Users, Bell, ChevronDown,
@@ -147,12 +148,7 @@ export default function NotificationBroadcastPage() {
   const hasPreview   = previewTitle || previewBody;
   const TypeIcon     = typeIcons[form.notifType];
 
-  const formatDate = (iso: string) => {
-    const d = new Date(iso);
-    return d.toLocaleDateString(isAr ? "ar-SA" : "en-GB", {
-      year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit",
-    });
-  };
+  const formatDate = (iso: string) => formatDateTimeAST(iso, isAr ? "ar" : "en");
 
   return (
     <div className="p-6 space-y-6 max-w-3xl mx-auto">

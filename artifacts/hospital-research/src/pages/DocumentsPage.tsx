@@ -24,6 +24,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
 import SignDocumentDialog from "@/components/SignDocumentDialog";
+import { formatDateAST } from "@/lib/ast";
 
 const fileTypeIcons: Record<string, React.ElementType> = {
   pdf: FileText, excel: Sheet, csv: Sheet, word: File, image: Image, other: File,
@@ -44,10 +45,7 @@ function formatSize(bytes: number) {
 }
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString(
-    i18n.language === "ar" ? "ar-SA" : "en-US",
-    { month: "short", day: "numeric", year: "numeric" },
-  );
+  return formatDateAST(d, i18n.language === "ar" ? "ar" : "en");
 }
 
 interface DocItem {

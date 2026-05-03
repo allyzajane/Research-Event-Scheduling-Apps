@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useTranslation } from "react-i18next";
+import { formatDateAST } from "@/lib/ast";
 import {
   useListArticles, getListArticlesQueryKey,
   useCreateArticle, useUpdateArticle, useDeleteArticle
@@ -31,7 +32,7 @@ const emptyForm = (): ArticleForm => ({
 });
 
 function formatDate(d: string) {
-  return new Date(d).toLocaleDateString(i18n.language === "ar" ? "ar-SA" : "en-US", { month: "short", day: "numeric", year: "numeric" });
+  return formatDateAST(d, i18n.language === "ar" ? "ar" : "en");
 }
 
 export default function ArticlesPage() {

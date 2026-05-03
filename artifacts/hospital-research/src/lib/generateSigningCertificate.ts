@@ -65,7 +65,7 @@ export async function generateSigningCertificate(opts: {
   pdf.setFontSize(9);
   pdf.text("Official Document Signing Certificate", ml, 26);
 
-  const certDate = new Date().toLocaleString("en-US", { dateStyle: "long", timeStyle: "short" });
+  const certDate = new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Riyadh", dateStyle: "long", timeStyle: "short" }).format(new Date());
   pdf.setFontSize(7.5);
   pdf.text(`Generated: ${certDate}`, pw - ml, 26, { align: "right" });
 
@@ -149,7 +149,7 @@ export async function generateSigningCertificate(opts: {
     pdf.setTextColor(71, 85, 105);
     pdf.text(`Role: ${s.user_role}   Email: ${s.user_email || "—"}`, ix, y + 12);
     pdf.text(
-      `Signed: ${new Date(s.signed_at).toLocaleString("en-US", { dateStyle: "full", timeStyle: "short" })}`,
+      `Signed: ${new Intl.DateTimeFormat("en-US", { timeZone: "Asia/Riyadh", dateStyle: "full", timeStyle: "short" }).format(new Date(s.signed_at))}`,
       ix, y + 19,
     );
     if (s.notes) {

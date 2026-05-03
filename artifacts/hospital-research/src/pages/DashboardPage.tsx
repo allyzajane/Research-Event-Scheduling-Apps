@@ -14,11 +14,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Button } from "@/components/ui/button";
+import { formatDateAST } from "@/lib/ast";
 
 function formatDate(date: string) {
-  return new Date(date).toLocaleDateString(i18n.language === "ar" ? "ar-SA" : "en-US", {
-    month: "short", day: "numeric", year: "numeric",
-  });
+  return formatDateAST(date, i18n.language === "ar" ? "ar" : "en");
 }
 
 function formatFileSize(bytes: number) {

@@ -9,6 +9,7 @@ import {
   useListRoles, getListRolesQueryKey,
 } from "@workspace/api-client-react";
 import RolesDialog, { ROLE_COLOR_MAP } from "@/components/RolesDialog";
+import { getGreeting } from "@/lib/ast";
 import { useQueryClient } from "@tanstack/react-query";
 import i18n from "i18next";
 import {
@@ -96,7 +97,7 @@ const strengthMeta = [
 
 export default function UsersPage() {
   const { t } = useTranslation();
-  const { session } = useAuth();
+  const { session, user } = useAuth();
   const qc = useQueryClient();
   const isAr = i18n.language === "ar";
 
@@ -220,7 +221,10 @@ export default function UsersPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">{t("users.title")}</h1>
+          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("users.title")}</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            {getGreeting(isAr)}{(isAr && user?.full_name_ar ? `, ${user.full_name_ar}` : user?.full_name ? `, ${user.full_name}` : "")}
+          </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("users.subtitle")}</p>
         </div>
         <div className="flex gap-2">

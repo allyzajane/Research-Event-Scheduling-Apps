@@ -33,8 +33,10 @@ interface Props {
   } | null;
 }
 
+import { formatDateTimeAST } from "@/lib/ast";
+
 function formatDate(d: string) {
-  return new Date(d).toLocaleString(undefined, { dateStyle: "medium", timeStyle: "short" });
+  return formatDateTimeAST(d, "en");
 }
 
 export default function SignDocumentDialog({ open, onClose, document: doc }: Props) {

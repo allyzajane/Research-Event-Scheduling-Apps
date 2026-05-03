@@ -1,5 +1,6 @@
 import { useState, useRef, useMemo, useEffect } from "react";
 import { useTranslation } from "react-i18next";
+import { formatDateAST, formatTimeAST, toInputDateTimeAST, fromInputDateTimeAST, getASTDateStr } from "@/lib/ast";
 import {
   useListEvents, getListEventsQueryKey,
   useCreateEvent, useUpdateEvent, useDeleteEvent,
@@ -86,7 +87,7 @@ function getPinStatus(ev: CalendarEvent): PinStatus {
   const end = ev.end_time ? new Date(ev.end_time) : null;
 
   if (end && end < now) return "past";
-  if (!end && start.toDateString() < now.toDateString()) return "past";
+  if (!end && getASTDateStr(start) < getASTDateStr(now)) return "past";
   return "present";
 }
 
@@ -136,7 +137,7 @@ const emptyForm = (dateStr?: string): EventForm => ({
 });
 
 function toInputDate(iso: string) {
-  return iso ? iso.slice(0, 16) : "";
+  return toInputDateTimeAST(iso);
 }
 
 function eventToForm(ev: CalendarEvent): EventForm {
@@ -553,8 +554,8 @@ export default function CalendarPage() {
           venue: form.venue || null,
           participants: form.participants,
           event_status: form.event_status,
-          start_time: new Date(form.start_time).toISOString(),
-          end_time: form.end_time ? new Date(form.end_time).toISOString() : null,
+          start_time: fromInputDateTimeAST(form.start_time),
+          end_time: form.end_time ? fromInputDateTimeAST(form.end_time) : null,
           all_day: form.all_day,
           color: form.color,
         }
@@ -583,8 +584,8 @@ export default function CalendarPage() {
           venue: f.venue || null,
           participants: f.participants,
           event_status: f.event_status,
-          start_time: new Date(f.start_time).toISOString(),
-          end_time: f.end_time ? new Date(f.end_time).toISOString() : null,
+          start_time: fromInputDateTimeAST(f.start_time),
+          end_time: f.end_time ? fromInputDateTimeAST(f.end_time) : null,
           all_day: f.all_day,
           color: f.color,
         }
@@ -734,11 +735,8 @@ export default function CalendarPage() {
                             {isAr && ev.title_ar ? ev.title_ar : ev.title}
                           </p>
                           <p className="text-xs text-muted-foreground mt-0.5">
-                            {new Date(ev.start_time).toLocaleDateString(
-                              isAr ? "ar-SA" : "en-US",
-                              { month: "short", day: "numeric", year: "numeric" }
-                            )}
-                            {!ev.all_day && ` · ${new Date(ev.start_time).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}`}
+                            {formatDateAST(ev.start_time, isAr ? "ar" : "en")}
+                            {!ev.all_day && ` · ${formatTimeAST(ev.start_time, isAr ? "ar" : "en")}`}
                           </p>
                           {ev.venue && (
                             <p className="text-xs text-muted-foreground truncate mt-0.5">

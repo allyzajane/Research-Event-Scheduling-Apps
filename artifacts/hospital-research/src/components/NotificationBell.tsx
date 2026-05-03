@@ -1,5 +1,6 @@
 import { useState, useCallback, useEffect, useRef } from "react";
 import { useTranslation } from "react-i18next";
+import { timeAgoAST } from "@/lib/ast";
 import { useLocation } from "wouter";
 import { Bell, BellOff, Check, CheckCheck, FileText, BookOpen, Calendar, User, Settings, Trash2 } from "lucide-react";
 import { useQueryClient } from "@tanstack/react-query";
@@ -37,14 +38,7 @@ const typeColor: Record<string, string> = {
 };
 
 function timeAgo(dateStr: string): string {
-  const diff = Date.now() - new Date(dateStr).getTime();
-  const mins = Math.floor(diff / 60000);
-  const hours = Math.floor(mins / 60);
-  const days = Math.floor(hours / 24);
-  if (mins < 1) return i18n.language === "ar" ? "الآن" : "Just now";
-  if (mins < 60) return i18n.language === "ar" ? `${mins} د` : `${mins}m`;
-  if (hours < 24) return i18n.language === "ar" ? `${hours} س` : `${hours}h`;
-  return i18n.language === "ar" ? `${days} ي` : `${days}d`;
+  return timeAgoAST(dateStr, i18n.language === "ar");
 }
 
 export function NotificationBell() {
