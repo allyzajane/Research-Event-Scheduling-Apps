@@ -611,15 +611,51 @@ export default function CalendarPage() {
     return c;
   }, [events]);
 
+  // ── Live AST clock ──────────────────────────────────────────────────────────
+  const [astClock, setAstClock] = useState(() => getASTTime());
+
+  function getASTTime() {
+    const now = new Date();
+    const time = new Intl.DateTimeFormat("en-GB", {
+      timeZone: "Asia/Riyadh",
+      hour: "2-digit", minute: "2-digit", second: "2-digit",
+      hour12: false,
+    }).format(now);
+    const date = new Intl.DateTimeFormat("en-US", {
+      timeZone: "Asia/Riyadh",
+      weekday: "short", day: "numeric", month: "short", year: "numeric",
+    }).format(now);
+    return { time, date };
+  }
+
+  useEffect(() => {
+    const id = setInterval(() => setAstClock(getASTTime()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
 
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold text-foreground">{t("calendar.title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("calendar.subtitle")}</p>
         </div>
+
+        {/* AST Military Clock */}
+        <div className="flex items-center gap-3 bg-muted/60 border border-border rounded-xl px-4 py-2.5 shadow-sm select-none">
+          <div className="flex flex-col items-center leading-none">
+            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-1">
+              KSA · AST (UTC+3)
+            </span>
+            <span className="font-mono text-2xl font-bold tabular-nums text-foreground tracking-tight">
+              {astClock.time}
+            </span>
+            <span className="text-[11px] text-muted-foreground mt-1">{astClock.date}</span>
+          </div>
+        </div>
+
         <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
           <PlusCircle className="w-4 h-4" /> {t("calendar.createEvent")}
         </Button>
