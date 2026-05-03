@@ -104,7 +104,7 @@ export default function ProfilePage() {
       updateUser({ avatar_url: url });
       await refreshProfile();
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: e instanceof Error ? e.message : t("profile.saveFailed") });
     } finally {
       setUploadingAvatar(false);
     }
@@ -137,8 +137,8 @@ export default function ProfilePage() {
       await refreshProfile();
       setMsg({ ok: true, text: t("profile.saved") });
       setEditing(false);
-    } catch {
-      setMsg({ ok: false, text: t("profile.saveFailed") });
+    } catch (e) {
+      setMsg({ ok: false, text: e instanceof Error ? e.message : t("profile.saveFailed") });
     } finally {
       setSaving(false);
     }

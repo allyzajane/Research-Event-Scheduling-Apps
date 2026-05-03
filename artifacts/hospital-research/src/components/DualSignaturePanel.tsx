@@ -181,7 +181,7 @@ function SignatureSlot({
       setMsg({ ok: true, text: t("profile.signatureSaved") });
       reset();
     } catch (e) {
-      setMsg({ ok: false, text: String(e) });
+      setMsg({ ok: false, text: e instanceof Error ? e.message : t("profile.signatureFailed") });
     } finally { setSaving(false); }
   };
 

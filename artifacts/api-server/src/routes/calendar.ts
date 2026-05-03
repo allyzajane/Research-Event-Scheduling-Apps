@@ -2,6 +2,7 @@ import { Router } from "express";
 import { requireAuth, requireRole, ADMIN_ROLES, isAdminRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 
+const router = Router();
 const REMINDER_MINUTES = [60, 1440];
 
 // ── Notify specific participants about an event invitation ─────────────────────
@@ -105,8 +106,6 @@ router.post("/calendar/reminders/run", requireAuth, requireRole(...ADMIN_ROLES),
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-const router = Router();
 
 // Columns that may exist in newer schema but not older deployments
 const OPTIONAL_FIELDS = new Set([

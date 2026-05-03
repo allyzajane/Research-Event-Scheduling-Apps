@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { requireAuth } from "../middlewares/auth";
-import { isAdminRole } from "../auth";
+import { isAdminRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 import { cache, TTL } from "../lib/cache";
 

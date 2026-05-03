@@ -167,7 +167,15 @@ router.post("/auth/upload-avatar", requireAuth, async (req, res) => {
     const { data: urlData } = supabaseAdmin.storage.from("hospital-files").getPublicUrl(storagePath);
     const avatarUrl = urlData.publicUrl;
 
-    await supabaseAdmin.from("profiles").update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() }).eq("id", userId);
+    const { error: profileError } = await supabaseAdmin
+      .from("profiles")
+      .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+    if (profileError) {
+      req.log.error({ error: profileError }, "Failed to persist avatar url");
+      res.status(500).json({ error: profileError.message || "Failed to save avatar" });
+      return;
+    }
     res.json({ url: avatarUrl, path: storagePath });
   } catch (err) {
     req.log.error({ err }, "Failed to upload avatar");
