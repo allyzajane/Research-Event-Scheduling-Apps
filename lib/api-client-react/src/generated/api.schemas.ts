@@ -373,6 +373,17 @@ export interface UpdateThemeSettingsBody {
   style?: string | null;
 }
 
+export interface UpdateProfileBody {
+  /** @nullable */
+  full_name?: string | null;
+  /** @nullable */
+  full_name_ar?: string | null;
+  /** @nullable */
+  department?: string | null;
+  /** @nullable */
+  avatar_url?: string | null;
+}
+
 export interface UploadFileBody {
   file_base64: string;
   file_name: string;

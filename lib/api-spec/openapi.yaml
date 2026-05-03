@@ -152,6 +152,42 @@ paths:
                 $ref: "#/components/schemas/UserProfile"
         "401":
           description: Unauthorized
+    patch:
+      operationId: updateMe
+      tags: [auth]
+      summary: Update current user profile
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateProfileBody"
+      responses:
+        "200":
+          description: Updated profile
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserProfile"
+
+  /auth/upload-avatar:
+    post:
+      operationId: uploadAvatar
+      tags: [auth]
+      summary: Upload profile avatar photo
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadFileBody"
+      responses:
+        "200":
+          description: Uploaded avatar URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
 
   /users:
     get:
@@ -1328,6 +1364,18 @@ components:
         font_family:
           type: ["string", "null"]
         style:
+          type: ["string", "null"]
+
+    UpdateProfileBody:
+      type: object
+      properties:
+        full_name:
+          type: ["string", "null"]
+        full_name_ar:
+          type: ["string", "null"]
+        department:
+          type: ["string", "null"]
+        avatar_url:
           type: ["string", "null"]
 
     UploadFileBody:

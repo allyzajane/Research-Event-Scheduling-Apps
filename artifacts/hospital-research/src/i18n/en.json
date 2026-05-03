@@ -244,7 +244,20 @@
     "title": "My Profile",
     "subtitle": "Your account information",
     "memberSince": "Member since",
-    "lastActive": "Last active"
+    "lastActive": "Last active",
+    "editProfile": "Edit Profile",
+    "accountDetails": "Account Details",
+    "personalInfo": "Personal Information",
+    "uploadAvatar": "Upload Photo",
+    "avatarHint": "PNG or JPG, max 2 MB",
+    "fullName": "Full Name",
+    "fullNameAr": "Full Name (Arabic)",
+    "department": "Department",
+    "saved": "Profile updated successfully",
+    "saveFailed": "Failed to update profile",
+    "saving": "Saving...",
+    "changePhoto": "Change Photo",
+    "removePhoto": "Remove Photo"
   },
   "notifications": {
     "title": "Notifications",

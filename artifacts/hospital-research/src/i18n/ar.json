@@ -244,7 +244,20 @@
     "title": "ملفي الشخصي",
     "subtitle": "معلومات حسابك",
     "memberSince": "عضو منذ",
-    "lastActive": "آخر نشاط"
+    "lastActive": "آخر نشاط",
+    "editProfile": "تعديل الملف الشخصي",
+    "accountDetails": "تفاصيل الحساب",
+    "personalInfo": "المعلومات الشخصية",
+    "uploadAvatar": "رفع صورة",
+    "avatarHint": "PNG أو JPG، حجم أقصى 2 ميجا",
+    "fullName": "الاسم الكامل",
+    "fullNameAr": "الاسم الكامل (عربي)",
+    "department": "القسم",
+    "saved": "تم تحديث الملف الشخصي بنجاح",
+    "saveFailed": "فشل تحديث الملف الشخصي",
+    "saving": "جاري الحفظ...",
+    "changePhoto": "تغيير الصورة",
+    "removePhoto": "حذف الصورة"
   },
   "notifications": {
     "title": "الإشعارات",

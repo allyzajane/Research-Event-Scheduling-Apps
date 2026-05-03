@@ -4,6 +4,8 @@ import { supabaseAdmin } from "../lib/supabase";
 
 const router = Router();
 
+const AVATAR_SIZE_LIMIT = 2 * 1024 * 1024; // 2 MB
+
 router.get("/auth/me", requireAuth, async (req, res) => {
   try {
     const userId = req.user!.id;
@@ -74,6 +76,93 @@ router.get("/auth/me", requireAuth, async (req, res) => {
     res.json(created);
   } catch (err) {
     req.log.error({ err }, "Failed to get current user");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.patch("/auth/me", requireAuth, async (req, res) => {
+  const userId = req.user!.id;
+  const allowed = ["full_name", "full_name_ar", "department", "avatar_url"];
+  const updates: Record<string, unknown> = { updated_at: new Date().toISOString() };
+
+  for (const field of allowed) {
+    if (Object.prototype.hasOwnProperty.call(req.body, field)) {
+      updates[field] = req.body[field] ?? null;
+    }
+  }
+
+  try {
+    const { data, error } = await supabaseAdmin
+      .from("profiles")
+      .update(updates)
+      .eq("id", userId)
+      .select()
+      .single();
+
+    if (error) {
+      req.log.error({ error }, "Failed to update profile");
+      res.status(500).json({ error: "Failed to update profile" });
+      return;
+    }
+
+    res.json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to update profile");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+router.post("/auth/upload-avatar", requireAuth, async (req, res) => {
+  const userId = req.user!.id;
+  const { file_base64, file_name, mime_type } = req.body as {
+    file_base64: string; file_name: string; mime_type: string;
+  };
+
+  if (!file_base64 || !file_name || !mime_type) {
+    res.status(400).json({ error: "Missing file data" });
+    return;
+  }
+
+  const ALLOWED_MIME = ["image/png", "image/jpeg", "image/jpg", "image/webp"];
+  if (!ALLOWED_MIME.includes(mime_type)) {
+    res.status(400).json({ error: "Only PNG, JPG, and WebP images are allowed" });
+    return;
+  }
+
+  try {
+    const buffer = Buffer.from(file_base64, "base64");
+    if (buffer.byteLength > AVATAR_SIZE_LIMIT) {
+      res.status(400).json({ error: "Image exceeds 2 MB limit" });
+      return;
+    }
+
+    const ext = file_name.split(".").pop() || "jpg";
+    const storagePath = `avatars/${userId}.${ext}`;
+
+    const { error: uploadError } = await supabaseAdmin.storage
+      .from("hospital-files")
+      .upload(storagePath, buffer, { contentType: mime_type, upsert: true });
+
+    if (uploadError) {
+      req.log.error({ error: uploadError }, "Failed to upload avatar");
+      res.status(500).json({ error: "Upload failed" });
+      return;
+    }
+
+    const { data: urlData } = supabaseAdmin.storage
+      .from("hospital-files")
+      .getPublicUrl(storagePath);
+
+    const avatarUrl = urlData.publicUrl;
+
+    await supabaseAdmin
+      .from("profiles")
+      .update({ avatar_url: avatarUrl, updated_at: new Date().toISOString() })
+      .eq("id", userId);
+
+    res.json({ url: avatarUrl, path: storagePath });
+  } catch (err) {
+    req.log.error({ err }, "Failed to upload avatar");
     res.status(500).json({ error: "Internal server error" });
   }
 });
