@@ -1,7 +1,6 @@
 import { Router } from "express";
-import { requireAuth, requireRole, ADMIN_ROLES } from "../middlewares/auth";
+import { requireAuth, requireRole, ADMIN_ROLES, isAdminRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
-import { notifyAllUsers } from "../lib/notifyAll";
 
 // ── Notify specific participants about an event invitation ─────────────────────
 async function notifyParticipants(
@@ -116,6 +115,8 @@ async function updateEvent(id: string, payload: Record<string, unknown>) {
 router.get("/calendar/events", requireAuth, async (req, res) => {
   try {
     const { start, end, type } = req.query as Record<string, string>;
+    const userId = req.user!.id;
+    const admin  = isAdminRole(req.user!.role);
 
     let query = supabaseAdmin
       .from("calendar_events")
@@ -133,7 +134,17 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
       return;
     }
 
-    res.json((data || []).map(e => shapeEvent(e as Record<string, unknown>)));
+    const events = (data || []).map(e => shapeEvent(e as Record<string, unknown>));
+
+    // Admins see all events; non-admins see only events they were added to as a participant
+    const visible = admin
+      ? events
+      : events.filter(ev =>
+          (ev.participants as string[]).includes(userId) ||
+          ev.created_by === userId,
+        );
+
+    res.json(visible);
   } catch (err) {
     req.log.error({ err }, "Failed to list events");
     res.json([]);
@@ -167,17 +178,7 @@ router.post("/calendar/events", requireAuth, requireRole(...ADMIN_ROLES), async 
     const { data, error } = await insertEvent(payload);
     if (error || !data) throw error ?? new Error("No data returned");
 
-    notifyAllUsers({
-      type: "event",
-      title: "New Event Added",
-      title_ar: "تمت إضافة حدث جديد",
-      body: `"${data.title}" has been scheduled.`,
-      body_ar: `تمت جدولة "${(data as Record<string, unknown>).title_ar || data.title}".`,
-      link: "/calendar",
-      exclude_user_id: req.user!.id,
-    }).catch(() => {});
-
-    // Notify each named participant individually
+    // Only notify selected participants — no broadcast to all users
     const shaped = shapeEvent(data as unknown as Record<string, unknown>);
     if (shaped.participants.length > 0) {
       notifyParticipants(
@@ -199,6 +200,9 @@ router.post("/calendar/events", requireAuth, requireRole(...ADMIN_ROLES), async 
 // ── GET /calendar/upcoming ────────────────────────────────────────────────────
 router.get("/calendar/upcoming", requireAuth, async (req, res) => {
   try {
+    const userId = req.user!.id;
+    const admin  = isAdminRole(req.user!.role);
+
     const now = new Date().toISOString();
     const oneWeekLater = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString();
 
@@ -208,7 +212,7 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
       .gte("start_time", now)
       .lte("start_time", oneWeekLater)
       .order("start_time")
-      .limit(10);
+      .limit(50);
 
     if (error) {
       req.log.warn({ err: error }, "calendar_events table may not exist yet");
@@ -216,7 +220,17 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
       return;
     }
 
-    res.json((data || []).map(e => shapeEvent(e as Record<string, unknown>)));
+    const events = (data || []).map(e => shapeEvent(e as Record<string, unknown>));
+
+    // Admins see all upcoming; non-admins see only their events
+    const visible = admin
+      ? events
+      : events.filter(ev =>
+          (ev.participants as string[]).includes(userId) ||
+          ev.created_by === userId,
+        );
+
+    res.json(visible.slice(0, 10));
   } catch (err) {
     req.log.error({ err }, "Failed to get upcoming events");
     res.json([]);
