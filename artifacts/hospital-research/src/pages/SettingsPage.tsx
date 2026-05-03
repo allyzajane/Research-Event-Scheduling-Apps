@@ -228,6 +228,20 @@ export default function SettingsPage() {
     }
   };
 
+  const handleWidgetToggle = async (role: Role, widget: string) => {
+    const widgetKey = widget as (typeof ALL_WIDGETS)[number];
+    if (!ALL_WIDGETS.includes(widgetKey)) return;
+
+    const nextWidgets = widgetDraft[role].includes(widget)
+      ? widgetDraft[role].filter(w => w !== widget)
+      : [...widgetDraft[role], widget];
+
+    setWidgetDraft(prev => ({ ...prev, [role]: nextWidgets }));
+    setWidgetMsg(null);
+    await updateRoleConfig.mutateAsync({ role, data: { widgets: nextWidgets } });
+    qc.invalidateQueries({ queryKey: getGetAllDashboardConfigsQueryKey() });
+  };
+
   const toggleWidget = (role: Role, widget: string) => {
     setWidgetDraft(prev => {
       const current = prev[role];
@@ -559,7 +573,7 @@ export default function SettingsPage() {
                             return (
                               <button
                                 key={widget}
-                                onClick={() => toggleWidget(role, widget)}
+                                onClick={() => handleWidgetToggle(role, widget)}
                                 className={cn(
                                   "flex items-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all text-start",
                                   active
