@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
   DropdownMenu, DropdownMenuContent, DropdownMenuItem,
@@ -101,7 +101,8 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <button className="w-full flex items-center gap-3 px-2 py-2 rounded-lg hover:bg-sidebar-accent transition-colors text-start">
-              <Avatar className="w-8 h-8">
+              <Avatar className="w-8 h-8 flex-shrink-0">
+                <AvatarImage src={user?.avatar_url || undefined} alt={user?.full_name || user?.email} className="object-cover" />
                 <AvatarFallback className="bg-primary text-white text-xs font-semibold">{initials}</AvatarFallback>
               </Avatar>
               <div className="flex-1 min-w-0">
