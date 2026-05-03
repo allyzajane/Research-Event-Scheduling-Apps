@@ -426,3 +426,12 @@ create policy "users can view their own signature requests"
 create policy "admins can insert signature requests"
   on public.document_signature_requests for insert
   with check (true);
+
+-- ─────────────────────────────────────────────────────────────
+-- 15. DUAL SIGNATURE COLUMNS
+-- Run this in Supabase SQL editor to enable the dual signature system.
+-- ─────────────────────────────────────────────────────────────
+alter table public.profiles
+  add column if not exists signature_drawn_url    text,
+  add column if not exists signature_active_type  text default 'uploaded'
+    check (signature_active_type in ('uploaded', 'drawn'));

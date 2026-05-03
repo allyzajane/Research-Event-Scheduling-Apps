@@ -10,6 +10,8 @@ export interface AuthUser {
   full_name_ar?: string;
   avatar_url?: string;
   signature_url?: string;
+  signature_drawn_url?: string;
+  signature_active_type?: string;
   department?: string;
 }
 
@@ -48,12 +50,14 @@ async function fetchProfile(session: Session): Promise<Partial<AuthUser> | null>
     return {
       id:            data.id as string,
       email:         (data.email as string) || session.user.email || "",
-      role:          (data.role as string)   || "staff",
-      full_name:     (data.full_name     as string | undefined) || undefined,
-      full_name_ar:  (data.full_name_ar  as string | undefined) || undefined,
-      avatar_url:    (data.avatar_url    as string | undefined) || undefined,
-      signature_url: (data.signature_url as string | undefined) || undefined,
-      department:    (data.department    as string | undefined) || undefined,
+      role:                 (data.role as string)   || "staff",
+      full_name:            (data.full_name            as string | undefined) || undefined,
+      full_name_ar:         (data.full_name_ar         as string | undefined) || undefined,
+      avatar_url:           (data.avatar_url           as string | undefined) || undefined,
+      signature_url:        (data.signature_url        as string | undefined) || undefined,
+      signature_drawn_url:  (data.signature_drawn_url  as string | undefined) || undefined,
+      signature_active_type:(data.signature_active_type as string | undefined) || undefined,
+      department:           (data.department           as string | undefined) || undefined,
     };
   } catch {
     return null;

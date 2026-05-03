@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AdminUpdateSignaturesBody,
   AllRoleDashboardConfigs,
   Article,
   ArticleList,
@@ -61,8 +62,10 @@ import type {
   UpdateUserBody,
   UploadFileBody,
   UploadResponse,
+  UploadSignatureBody,
   User,
   UserProfile,
+  UserSignatureData,
   UserStats,
 } from "./api.schemas";
 
@@ -1050,21 +1053,21 @@ export const useUploadAvatar = <
 };
 
 /**
- * @summary Upload or save drawn signature (PNG/JPG/SVG)
+ * @summary Upload or save drawn signature (PNG/JPG/SVG). sig_type=uploaded|drawn
  */
 export const getUploadSignatureUrl = () => {
   return `/api/auth/upload-signature`;
 };
 
 export const uploadSignature = async (
-  uploadFileBody: UploadFileBody,
+  uploadSignatureBody: UploadSignatureBody,
   options?: RequestInit,
 ): Promise<UploadResponse> => {
   return customFetch<UploadResponse>(getUploadSignatureUrl(), {
     ...options,
     method: "POST",
     headers: { "Content-Type": "application/json", ...options?.headers },
-    body: JSON.stringify(uploadFileBody),
+    body: JSON.stringify(uploadSignatureBody),
   });
 };
 
@@ -1075,14 +1078,14 @@ export const getUploadSignatureMutationOptions = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof uploadSignature>>,
     TError,
-    { data: BodyType<UploadFileBody> },
+    { data: BodyType<UploadSignatureBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationOptions<
   Awaited<ReturnType<typeof uploadSignature>>,
   TError,
-  { data: BodyType<UploadFileBody> },
+  { data: BodyType<UploadSignatureBody> },
   TContext
 > => {
   const mutationKey = ["uploadSignature"];
@@ -1096,7 +1099,7 @@ export const getUploadSignatureMutationOptions = <
 
   const mutationFn: MutationFunction<
     Awaited<ReturnType<typeof uploadSignature>>,
-    { data: BodyType<UploadFileBody> }
+    { data: BodyType<UploadSignatureBody> }
   > = (props) => {
     const { data } = props ?? {};
 
@@ -1109,11 +1112,11 @@ export const getUploadSignatureMutationOptions = <
 export type UploadSignatureMutationResult = NonNullable<
   Awaited<ReturnType<typeof uploadSignature>>
 >;
-export type UploadSignatureMutationBody = BodyType<UploadFileBody>;
+export type UploadSignatureMutationBody = BodyType<UploadSignatureBody>;
 export type UploadSignatureMutationError = ErrorType<unknown>;
 
 /**
- * @summary Upload or save drawn signature (PNG/JPG/SVG)
+ * @summary Upload or save drawn signature (PNG/JPG/SVG). sig_type=uploaded|drawn
  */
 export const useUploadSignature = <
   TError = ErrorType<unknown>,
@@ -1122,17 +1125,285 @@ export const useUploadSignature = <
   mutation?: UseMutationOptions<
     Awaited<ReturnType<typeof uploadSignature>>,
     TError,
-    { data: BodyType<UploadFileBody> },
+    { data: BodyType<UploadSignatureBody> },
     TContext
   >;
   request?: SecondParameter<typeof customFetch>;
 }): UseMutationResult<
   Awaited<ReturnType<typeof uploadSignature>>,
   TError,
-  { data: BodyType<UploadFileBody> },
+  { data: BodyType<UploadSignatureBody> },
   TContext
 > => {
   return useMutation(getUploadSignatureMutationOptions(options));
+};
+
+/**
+ * @summary Get both signatures for a user (admin only)
+ */
+export const getGetAdminUserSignaturesUrl = (userId: string) => {
+  return `/api/admin/users/${userId}/signatures`;
+};
+
+export const getAdminUserSignatures = async (
+  userId: string,
+  options?: RequestInit,
+): Promise<UserSignatureData> => {
+  return customFetch<UserSignatureData>(getGetAdminUserSignaturesUrl(userId), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAdminUserSignaturesQueryKey = (userId: string) => {
+  return [`/api/admin/users/${userId}/signatures`] as const;
+};
+
+export const getGetAdminUserSignaturesQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAdminUserSignatures>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminUserSignatures>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAdminUserSignaturesQueryKey(userId);
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAdminUserSignatures>>
+  > = ({ signal }) =>
+    getAdminUserSignatures(userId, { signal, ...requestOptions });
+
+  return {
+    queryKey,
+    queryFn,
+    enabled: !!userId,
+    ...queryOptions,
+  } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAdminUserSignatures>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAdminUserSignaturesQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAdminUserSignatures>>
+>;
+export type GetAdminUserSignaturesQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get both signatures for a user (admin only)
+ */
+
+export function useGetAdminUserSignatures<
+  TData = Awaited<ReturnType<typeof getAdminUserSignatures>>,
+  TError = ErrorType<unknown>,
+>(
+  userId: string,
+  options?: {
+    query?: UseQueryOptions<
+      Awaited<ReturnType<typeof getAdminUserSignatures>>,
+      TError,
+      TData
+    >;
+    request?: SecondParameter<typeof customFetch>;
+  },
+): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAdminUserSignaturesQueryOptions(userId, options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Set active signature type or remove a signature (admin only)
+ */
+export const getAdminUpdateUserSignaturesUrl = (userId: string) => {
+  return `/api/admin/users/${userId}/signatures`;
+};
+
+export const adminUpdateUserSignatures = async (
+  userId: string,
+  adminUpdateSignaturesBody: AdminUpdateSignaturesBody,
+  options?: RequestInit,
+): Promise<UserSignatureData> => {
+  return customFetch<UserSignatureData>(
+    getAdminUpdateUserSignaturesUrl(userId),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(adminUpdateSignaturesBody),
+    },
+  );
+};
+
+export const getAdminUpdateUserSignaturesMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUpdateUserSignatures>>,
+    TError,
+    { userId: string; data: BodyType<AdminUpdateSignaturesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUpdateUserSignatures>>,
+  TError,
+  { userId: string; data: BodyType<AdminUpdateSignaturesBody> },
+  TContext
+> => {
+  const mutationKey = ["adminUpdateUserSignatures"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUpdateUserSignatures>>,
+    { userId: string; data: BodyType<AdminUpdateSignaturesBody> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return adminUpdateUserSignatures(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUpdateUserSignaturesMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUpdateUserSignatures>>
+>;
+export type AdminUpdateUserSignaturesMutationBody =
+  BodyType<AdminUpdateSignaturesBody>;
+export type AdminUpdateUserSignaturesMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Set active signature type or remove a signature (admin only)
+ */
+export const useAdminUpdateUserSignatures = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUpdateUserSignatures>>,
+    TError,
+    { userId: string; data: BodyType<AdminUpdateSignaturesBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUpdateUserSignatures>>,
+  TError,
+  { userId: string; data: BodyType<AdminUpdateSignaturesBody> },
+  TContext
+> => {
+  return useMutation(getAdminUpdateUserSignaturesMutationOptions(options));
+};
+
+/**
+ * @summary Upload a signature for any user (admin only)
+ */
+export const getAdminUploadUserSignatureUrl = (userId: string) => {
+  return `/api/admin/users/${userId}/upload-signature`;
+};
+
+export const adminUploadUserSignature = async (
+  userId: string,
+  uploadSignatureBody: UploadSignatureBody,
+  options?: RequestInit,
+): Promise<UploadResponse> => {
+  return customFetch<UploadResponse>(getAdminUploadUserSignatureUrl(userId), {
+    ...options,
+    method: "POST",
+    headers: { "Content-Type": "application/json", ...options?.headers },
+    body: JSON.stringify(uploadSignatureBody),
+  });
+};
+
+export const getAdminUploadUserSignatureMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUploadUserSignature>>,
+    TError,
+    { userId: string; data: BodyType<UploadSignatureBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof adminUploadUserSignature>>,
+  TError,
+  { userId: string; data: BodyType<UploadSignatureBody> },
+  TContext
+> => {
+  const mutationKey = ["adminUploadUserSignature"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof adminUploadUserSignature>>,
+    { userId: string; data: BodyType<UploadSignatureBody> }
+  > = (props) => {
+    const { userId, data } = props ?? {};
+
+    return adminUploadUserSignature(userId, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type AdminUploadUserSignatureMutationResult = NonNullable<
+  Awaited<ReturnType<typeof adminUploadUserSignature>>
+>;
+export type AdminUploadUserSignatureMutationBody =
+  BodyType<UploadSignatureBody>;
+export type AdminUploadUserSignatureMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Upload a signature for any user (admin only)
+ */
+export const useAdminUploadUserSignature = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof adminUploadUserSignature>>,
+    TError,
+    { userId: string; data: BodyType<UploadSignatureBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof adminUploadUserSignature>>,
+  TError,
+  { userId: string; data: BodyType<UploadSignatureBody> },
+  TContext
+> => {
+  return useMutation(getAdminUploadUserSignatureMutationOptions(options));
 };
 
 /**

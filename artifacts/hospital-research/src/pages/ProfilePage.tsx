@@ -4,13 +4,14 @@ import { useAuth } from "@/contexts/AuthContext";
 import i18n from "i18next";
 import {
   User, Mail, Shield, Building, Camera, Save, Pencil, X, Check, PenLine,
+  ImageIcon, Star,
 } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import SignaturePanel from "@/components/SignaturePanel";
+import DualSignaturePanel from "@/components/DualSignaturePanel";
 import { cn } from "@/lib/utils";
 
 const roleColors: Record<string, string> = {
@@ -42,7 +43,11 @@ export default function ProfilePage() {
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
   const [msg, setMsg]                       = useState<{ ok: boolean; text: string } | null>(null);
   const [avatarPreview, setAvatarPreview]   = useState<string | null>(null);
-  const [signatureUrl, setSignatureUrl]     = useState<string | null | undefined>(undefined);
+
+  // Local signature state (both slots)
+  const [sigUploaded,   setSigUploaded]   = useState<string | null | undefined>(undefined);
+  const [sigDrawn,      setSigDrawn]      = useState<string | null | undefined>(undefined);
+  const [sigActiveType, setSigActiveType] = useState<string | null | undefined>(undefined);
 
   useEffect(() => {
     if (user) {
@@ -53,7 +58,9 @@ export default function ProfilePage() {
         avatar_url:   user.avatar_url   || "",
       });
       setAvatarPreview(user.avatar_url || null);
-      setSignatureUrl((user as unknown as Record<string, unknown>).signature_url as string | null | undefined);
+      setSigUploaded(user.signature_url);
+      setSigDrawn(user.signature_drawn_url);
+      setSigActiveType(user.signature_active_type || "uploaded");
     }
   }, [user]);
 
@@ -95,7 +102,6 @@ export default function ProfilePage() {
       setForm(prev => ({ ...prev, avatar_url: url }));
       setAvatarPreview(url);
       updateUser({ avatar_url: url });
-      // Re-fetch profile from DB so state stays in sync
       await refreshProfile();
     } catch (e) {
       setMsg({ ok: false, text: String(e) });
@@ -128,7 +134,6 @@ export default function ProfilePage() {
         throw new Error(err.error || "Save failed");
       }
 
-      // Refresh the full profile from DB so every field reflects what was persisted
       await refreshProfile();
       setMsg({ ok: true, text: t("profile.saved") });
       setEditing(false);
@@ -151,12 +156,21 @@ export default function ProfilePage() {
     setEditing(false);
   };
 
-  const handleSignatureSaved = async (url: string | null) => {
-    setSignatureUrl(url);
-    updateUser({ signature_url: url } as Parameters<typeof updateUser>[0]);
-    // Re-fetch profile from DB so the signature persists across refreshes
+  const handleSigUpdated = async (data: {
+    uploaded_url?: string | null;
+    drawn_url?:    string | null;
+    active_type?:  string;
+  }) => {
+    if (data.uploaded_url !== undefined) { setSigUploaded(data.uploaded_url); updateUser({ signature_url: data.uploaded_url } as Parameters<typeof updateUser>[0]); }
+    if (data.drawn_url    !== undefined) { setSigDrawn(data.drawn_url);    updateUser({ signature_drawn_url: data.drawn_url } as Parameters<typeof updateUser>[0]); }
+    if (data.active_type  !== undefined) { setSigActiveType(data.active_type); updateUser({ signature_active_type: data.active_type } as Parameters<typeof updateUser>[0]); }
     await refreshProfile();
   };
+
+  // Determine which signature to show in view mode
+  const activeSigUrl = sigActiveType === "drawn" ? sigDrawn : sigUploaded;
+  const inactiveSigUrl = sigActiveType === "drawn" ? sigUploaded : sigDrawn;
+  const inactiveSigLabel = sigActiveType === "drawn" ? t("profile.signatureUploadedLabel") : t("profile.signatureDrawnLabel");
 
   return (
     <div className="p-6 space-y-6 max-w-2xl mx-auto">
@@ -271,24 +285,6 @@ export default function ProfilePage() {
                 </div>
               </div>
 
-              {/* ── Signature (inline, below Full Name) ── */}
-              <div className="space-y-1.5 pt-1 border-t border-border">
-                <div className="flex items-center gap-2 mb-1">
-                  <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
-                    <PenLine className="w-3 h-3 text-primary" />
-                  </div>
-                  <Label className="text-sm font-medium">{t("profile.signatureTitle")}</Label>
-                </div>
-                <p className="text-xs text-muted-foreground mb-2">{t("profile.signatureDesc")}</p>
-                {session && (
-                  <SignaturePanel
-                    currentUrl={signatureUrl}
-                    sessionToken={session.access_token}
-                    onSaved={handleSignatureSaved}
-                  />
-                )}
-              </div>
-
               <div className="space-y-1.5">
                 <Label>{t("profile.department")}</Label>
                 <Input
@@ -329,30 +325,79 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-              {/* ── Signature row (view mode) ── */}
-              <div className="flex items-start gap-3 py-3">
-                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
-                  <PenLine className="w-4 h-4 text-muted-foreground" />
+      {/* ── Signatures card (always visible, inside or outside edit mode) ── */}
+      <Card className="border-border">
+        <CardHeader className="pb-3">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
+              <PenLine className="w-3.5 h-3.5 text-primary" />
+            </div>
+            <CardTitle className="text-base">{t("profile.signatureTitle")}</CardTitle>
+          </div>
+          <p className="text-xs text-muted-foreground mt-1">{t("profile.signatureDesc")}</p>
+        </CardHeader>
+        <CardContent className="pt-0">
+          {!editing ? (
+            /* ── View mode: show active signature prominently + inactive smaller ── */
+            <div className="space-y-3">
+              {activeSigUrl ? (
+                <div>
+                  <div className="flex items-center gap-2 mb-2">
+                    <Star className="w-3.5 h-3.5 text-teal-500" />
+                    <span className="text-xs font-medium text-teal-600 dark:text-teal-400">
+                      {sigActiveType === "drawn" ? t("profile.signatureDrawnLabel") : t("profile.signatureUploadedLabel")}
+                      {" — "}{t("profile.signatureActive")}
+                    </span>
+                  </div>
+                  <div className="inline-flex rounded-xl border-2 border-teal-400 dark:border-teal-600 bg-white dark:bg-slate-950 px-4 py-3">
+                    <img
+                      src={`${activeSigUrl}?t=${Date.now()}`}
+                      alt="Active Signature"
+                      className="max-h-14 max-w-[200px] object-contain"
+                      onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                    />
+                  </div>
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs text-muted-foreground mb-2">{t("profile.signatureTitle")}</p>
-                  {signatureUrl ? (
-                    <div className="inline-flex items-center rounded-lg border border-border bg-white dark:bg-slate-950 px-3 py-2">
+              ) : (
+                <p className="text-sm text-muted-foreground italic">{t("profile.signatureNone")}</p>
+              )}
+              {inactiveSigUrl && (
+                <div className="flex items-start gap-3">
+                  <div className="w-6 h-6 rounded-md bg-muted flex items-center justify-center flex-shrink-0 mt-0.5">
+                    {sigActiveType === "drawn" ? <ImageIcon className="w-3 h-3 text-muted-foreground" /> : <PenLine className="w-3 h-3 text-muted-foreground" />}
+                  </div>
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">{inactiveSigLabel}</p>
+                    <div className="inline-flex rounded-lg border border-border bg-white dark:bg-slate-950 px-3 py-1.5">
                       <img
-                        src={`${signatureUrl}?t=${Date.now()}`}
-                        alt="Signature"
-                        className="max-h-10 max-w-[180px] object-contain"
+                        src={`${inactiveSigUrl}?t=${Date.now()}`}
+                        alt="Inactive Signature"
+                        className="max-h-8 max-w-[120px] object-contain opacity-60"
                         onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
                       />
                     </div>
-                  ) : (
-                    <p className="text-sm text-muted-foreground italic">{t("profile.signatureNone")}</p>
-                  )}
+                  </div>
                 </div>
-              </div>
+              )}
+              <Button variant="outline" size="sm" onClick={() => { setMsg(null); setEditing(true); }} className="gap-1.5 text-xs mt-1">
+                <Pencil className="w-3 h-3" />{t("profile.editProfile")}
+              </Button>
             </div>
-          )}
+          ) : session ? (
+            /* ── Edit mode: full DualSignaturePanel ── */
+            <DualSignaturePanel
+              uploadedUrl={sigUploaded}
+              drawnUrl={sigDrawn}
+              activeType={sigActiveType}
+              sessionToken={session.access_token}
+              onUpdated={handleSigUpdated}
+            />
+          ) : null}
         </CardContent>
       </Card>
 

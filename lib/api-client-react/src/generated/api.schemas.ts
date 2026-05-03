@@ -27,6 +27,10 @@ export interface UserProfile {
   /** @nullable */
   signature_url?: string | null;
   /** @nullable */
+  signature_drawn_url?: string | null;
+  /** @nullable */
+  signature_active_type?: string | null;
+  /** @nullable */
   department?: string | null;
   is_active: boolean;
   created_at: string;
@@ -46,6 +50,10 @@ export interface User {
   avatar_url?: string | null;
   /** @nullable */
   signature_url?: string | null;
+  /** @nullable */
+  signature_drawn_url?: string | null;
+  /** @nullable */
+  signature_active_type?: string | null;
   is_active: boolean;
   created_at: string;
   /** @nullable */
@@ -462,6 +470,54 @@ export interface UpdateProfileBody {
   department?: string | null;
   /** @nullable */
   avatar_url?: string | null;
+  /** @nullable */
+  signature_url?: string | null;
+  /** @nullable */
+  signature_drawn_url?: string | null;
+  /** @nullable */
+  signature_active_type?: string | null;
+}
+
+export type UploadSignatureBodySigType =
+  (typeof UploadSignatureBodySigType)[keyof typeof UploadSignatureBodySigType];
+
+export const UploadSignatureBodySigType = {
+  uploaded: "uploaded",
+  drawn: "drawn",
+} as const;
+
+export interface UploadSignatureBody {
+  file_base64: string;
+  file_name: string;
+  mime_type: string;
+  sig_type?: UploadSignatureBodySigType;
+}
+
+export interface UserSignatureData {
+  id: string;
+  /** @nullable */
+  full_name?: string | null;
+  email: string;
+  /** @nullable */
+  signature_url?: string | null;
+  /** @nullable */
+  signature_drawn_url?: string | null;
+  /** @nullable */
+  signature_active_type?: string | null;
+}
+
+export type AdminUpdateSignaturesBodySignatureActiveType =
+  (typeof AdminUpdateSignaturesBodySignatureActiveType)[keyof typeof AdminUpdateSignaturesBodySignatureActiveType];
+
+export const AdminUpdateSignaturesBodySignatureActiveType = {
+  uploaded: "uploaded",
+  drawn: "drawn",
+} as const;
+
+export interface AdminUpdateSignaturesBody {
+  signature_active_type?: AdminUpdateSignaturesBodySignatureActiveType;
+  remove_uploaded?: boolean;
+  remove_drawn?: boolean;
 }
 
 export interface UploadFileBody {

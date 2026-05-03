@@ -145,6 +145,8 @@ export const GetMeResponse = zod.object({
   role: zod.string(),
   avatar_url: zod.string().nullish(),
   signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
   department: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
@@ -158,6 +160,9 @@ export const UpdateMeBody = zod.object({
   full_name_ar: zod.string().nullish(),
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
+  signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
 });
 
 export const UpdateMeResponse = zod.object({
@@ -168,6 +173,8 @@ export const UpdateMeResponse = zod.object({
   role: zod.string(),
   avatar_url: zod.string().nullish(),
   signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
   department: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
@@ -188,15 +195,73 @@ export const UploadAvatarResponse = zod.object({
 });
 
 /**
- * @summary Upload or save drawn signature (PNG/JPG/SVG)
+ * @summary Upload or save drawn signature (PNG/JPG/SVG). sig_type=uploaded|drawn
  */
 export const UploadSignatureBody = zod.object({
   file_base64: zod.string(),
   file_name: zod.string(),
   mime_type: zod.string(),
+  sig_type: zod.enum(["uploaded", "drawn"]).optional(),
 });
 
 export const UploadSignatureResponse = zod.object({
+  url: zod.string(),
+  path: zod.string(),
+});
+
+/**
+ * @summary Get both signatures for a user (admin only)
+ */
+export const GetAdminUserSignaturesParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const GetAdminUserSignaturesResponse = zod.object({
+  id: zod.string(),
+  full_name: zod.string().nullish(),
+  email: zod.string(),
+  signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
+});
+
+/**
+ * @summary Set active signature type or remove a signature (admin only)
+ */
+export const AdminUpdateUserSignaturesParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const AdminUpdateUserSignaturesBody = zod.object({
+  signature_active_type: zod.enum(["uploaded", "drawn"]).optional(),
+  remove_uploaded: zod.boolean().optional(),
+  remove_drawn: zod.boolean().optional(),
+});
+
+export const AdminUpdateUserSignaturesResponse = zod.object({
+  id: zod.string(),
+  full_name: zod.string().nullish(),
+  email: zod.string(),
+  signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
+});
+
+/**
+ * @summary Upload a signature for any user (admin only)
+ */
+export const AdminUploadUserSignatureParams = zod.object({
+  userId: zod.coerce.string(),
+});
+
+export const AdminUploadUserSignatureBody = zod.object({
+  file_base64: zod.string(),
+  file_name: zod.string(),
+  mime_type: zod.string(),
+  sig_type: zod.enum(["uploaded", "drawn"]).optional(),
+});
+
+export const AdminUploadUserSignatureResponse = zod.object({
   url: zod.string(),
   path: zod.string(),
 });
@@ -218,6 +283,8 @@ export const ListUsersResponseItem = zod.object({
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
   signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
   last_sign_in_at: zod.string().nullish(),
@@ -252,6 +319,8 @@ export const GetUserResponse = zod.object({
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
   signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
   last_sign_in_at: zod.string().nullish(),
@@ -281,6 +350,8 @@ export const UpdateUserResponse = zod.object({
   department: zod.string().nullish(),
   avatar_url: zod.string().nullish(),
   signature_url: zod.string().nullish(),
+  signature_drawn_url: zod.string().nullish(),
+  signature_active_type: zod.string().nullish(),
   is_active: zod.boolean(),
   created_at: zod.string(),
   last_sign_in_at: zod.string().nullish(),

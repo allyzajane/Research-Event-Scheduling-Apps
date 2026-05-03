@@ -1,5 +1,6 @@
 import { useState, useCallback } from "react";
 import { useTranslation } from "react-i18next";
+import { useAuth } from "@/contexts/AuthContext";
 import {
   useListUsers, getListUsersQueryKey,
   useCreateUser, useUpdateUser, useDeleteUser,
@@ -11,8 +12,9 @@ import i18n from "i18next";
 import {
   UserPlus, Search, Pencil, Trash2, MoreHorizontal, Users, KeyRound,
   CheckCircle2, AlertCircle, Eye, EyeOff, RefreshCw, Copy, Check,
-  ShieldCheck,
+  ShieldCheck, PenLine,
 } from "lucide-react";
+import AdminSignatureDialog from "@/components/AdminSignatureDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
@@ -89,6 +91,7 @@ const strengthMeta = [
 
 export default function UsersPage() {
   const { t } = useTranslation();
+  const { session } = useAuth();
   const qc = useQueryClient();
   const isAr = i18n.language === "ar";
 
@@ -99,6 +102,12 @@ export default function UsersPage() {
   const [deleteId, setDeleteId]       = useState<string | null>(null);
   const [form, setForm]               = useState<UserForm>(emptyForm());
   const [saving, setSaving]           = useState(false);
+
+  // Admin signature dialog state
+  const [sigUser, setSigUser] = useState<{
+    id: string; name: string; email: string;
+    signature_url?: string | null; signature_drawn_url?: string | null; signature_active_type?: string | null;
+  } | null>(null);
 
   // Set-password dialog state
   const [setPassUser, setSetPassUser] = useState<{ id: string; email: string; name: string } | null>(null);
@@ -308,6 +317,16 @@ export default function UsersPage() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => openSetPassword(user)}>
                             <KeyRound className="w-3.5 h-3.5 me-2" />{t("users.setPassword")}
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => setSigUser({
+                            id: user.id,
+                            name: user.full_name || user.email,
+                            email: user.email,
+                            signature_url: user.signature_url,
+                            signature_drawn_url: user.signature_drawn_url,
+                            signature_active_type: user.signature_active_type,
+                          })}>
+                            <PenLine className="w-3.5 h-3.5 me-2" />{t("adminSig.manageSignatures")}
                           </DropdownMenuItem>
                           <DropdownMenuSeparator />
                           <DropdownMenuItem className="text-destructive" onClick={() => setDeleteId(user.id)}>
@@ -575,6 +594,19 @@ export default function UsersPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ── Admin Signature Dialog ──────────────────────────────────── */}
+      {session && (
+        <AdminSignatureDialog
+          open={!!sigUser}
+          onClose={() => setSigUser(null)}
+          user={sigUser}
+          sessionToken={session.access_token}
+          onUpdated={() => {
+            qc.invalidateQueries({ queryKey: getListUsersQueryKey() });
+          }}
+        />
+      )}
     </div>
   );
 }

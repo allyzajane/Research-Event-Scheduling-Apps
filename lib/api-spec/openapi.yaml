@@ -223,13 +223,80 @@ paths:
     post:
       operationId: uploadSignature
       tags: [auth]
-      summary: Upload or save drawn signature (PNG/JPG/SVG)
+      summary: Upload or save drawn signature (PNG/JPG/SVG). sig_type=uploaded|drawn
       requestBody:
         required: true
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/UploadFileBody"
+              $ref: "#/components/schemas/UploadSignatureBody"
+      responses:
+        "200":
+          description: Uploaded signature URL
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UploadResponse"
+
+  /admin/users/{userId}/signatures:
+    get:
+      operationId: getAdminUserSignatures
+      tags: [admin]
+      summary: Get both signatures for a user (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "200":
+          description: User signature data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSignatureData"
+    patch:
+      operationId: adminUpdateUserSignatures
+      tags: [admin]
+      summary: Set active signature type or remove a signature (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/AdminUpdateSignaturesBody"
+      responses:
+        "200":
+          description: Updated signature data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/UserSignatureData"
+
+  /admin/users/{userId}/upload-signature:
+    post:
+      operationId: adminUploadUserSignature
+      tags: [admin]
+      summary: Upload a signature for any user (admin only)
+      parameters:
+        - name: userId
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UploadSignatureBody"
       responses:
         "200":
           description: Uploaded signature URL
@@ -999,6 +1066,10 @@ components:
           type: ["string", "null"]
         signature_url:
           type: ["string", "null"]
+        signature_drawn_url:
+          type: ["string", "null"]
+        signature_active_type:
+          type: ["string", "null"]
         department:
           type: ["string", "null"]
         is_active:
@@ -1025,6 +1096,10 @@ components:
         avatar_url:
           type: ["string", "null"]
         signature_url:
+          type: ["string", "null"]
+        signature_drawn_url:
+          type: ["string", "null"]
+        signature_active_type:
           type: ["string", "null"]
         is_active:
           type: boolean
@@ -1631,6 +1706,54 @@ components:
           type: ["string", "null"]
         avatar_url:
           type: ["string", "null"]
+        signature_url:
+          type: ["string", "null"]
+        signature_drawn_url:
+          type: ["string", "null"]
+        signature_active_type:
+          type: ["string", "null"]
+
+    UploadSignatureBody:
+      type: object
+      properties:
+        file_base64:
+          type: string
+        file_name:
+          type: string
+        mime_type:
+          type: string
+        sig_type:
+          type: string
+          enum: [uploaded, drawn]
+      required: [file_base64, file_name, mime_type]
+
+    UserSignatureData:
+      type: object
+      properties:
+        id:
+          type: string
+        full_name:
+          type: ["string", "null"]
+        email:
+          type: string
+        signature_url:
+          type: ["string", "null"]
+        signature_drawn_url:
+          type: ["string", "null"]
+        signature_active_type:
+          type: ["string", "null"]
+      required: [id, email]
+
+    AdminUpdateSignaturesBody:
+      type: object
+      properties:
+        signature_active_type:
+          type: string
+          enum: [uploaded, drawn]
+        remove_uploaded:
+          type: boolean
+        remove_drawn:
+          type: boolean
 
     UploadFileBody:
       type: object
