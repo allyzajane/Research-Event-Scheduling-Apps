@@ -282,7 +282,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
           <div className="grid sm:grid-cols-2 gap-4">
             <ReadField
               label={t("meetingForm.meetingNo")}
-              value={form?.meeting_no ? `#${form.meeting_no}` : form?.id ? `#${form.id.slice(0, 8)}` : "—"}
+              value={form?.meeting_no ? `#${form.meeting_no}` : "—"}
               icon={CalendarDays}
             />
             <ReadField

@@ -18,6 +18,7 @@ import AttendanceForm from "@/components/AttendanceForm";
 
 interface CalendarEvent {
   id: string;
+  meeting_no?: number;
   title: string;
   title_ar?: string;
   venue?: string;
@@ -90,7 +91,7 @@ export default function AttendancePage() {
       const events = (await r.json()) as AttendanceEvent[];
       const visible = isAdminRole ? events : events.filter(ev => (ev.participants ?? []).includes(user?.id ?? ""));
       visible.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
-      setForms(visible);
+      setForms(visible.map((ev, index) => ({ ...ev, meeting_no: index + 1 })));
       setSelectedForm(prev => {
         if (prev && visible.some(f => f.id === prev)) return prev;
         return visible[0]?.id ?? "";
@@ -127,7 +128,7 @@ export default function AttendancePage() {
         <AttendanceForm
           formId={selectedForm}
           onBack={() => { setSelectedForm(""); fetchForms(); }}
-          formOptions={forms as any}
+          formOptions={forms}
           onSelectForm={setSelectedForm}
         />
       </div>
