@@ -102,35 +102,51 @@ router.post("/users", requireAuth, requireRole("admin"), async (req, res) => {
   }
 });
 
-router.post("/users/:id/reset-password", requireAuth, requireRole("admin"), async (req, res) => {
+router.post("/users/:id/set-password", requireAuth, requireRole("admin"), async (req, res) => {
+  const targetId = String(req.params.id);
+  const { password } = req.body as { password: string };
+
+  if (!password || password.length < 8) {
+    res.status(400).json({ error: "Password must be at least 8 characters" });
+    return;
+  }
+
   try {
-    // Fetch the user's email from their profile
-    const { data: profile, error: profileError } = await supabaseAdmin
-      .from("profiles")
-      .select("email")
-      .eq("id", req.params.id)
-      .single();
-
-    if (profileError || !profile) {
-      res.status(404).json({ error: "User not found" });
-      return;
-    }
-
-    // Send password reset email via Supabase Auth
-    const { error } = await supabaseAdmin.auth.resetPasswordForEmail(
-      profile.email,
-      { redirectTo: undefined }
+    // Directly set the password via Supabase Auth Admin API — no email sent
+    const { error: authError } = await supabaseAdmin.auth.admin.updateUserById(
+      targetId,
+      { password }
     );
 
-    if (error) {
-      req.log.error({ err: error }, "Failed to send password reset email");
-      res.status(400).json({ error: error.message });
+    if (authError) {
+      req.log.error({ err: authError }, "Failed to set user password");
+      res.status(400).json({ error: authError.message });
       return;
     }
 
-    res.json({ success: true, message: `Password reset email sent to ${profile.email}` });
+    // Fetch profile so we can send an in-app notification
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name")
+      .eq("id", targetId)
+      .single();
+
+    // Insert in-app notification to the target user (fire-and-forget)
+    if (profile) {
+      await supabaseAdmin.from("notifications").insert({
+        user_id: targetId,
+        type: "system",
+        title: "Password Updated",
+        title_ar: "تم تحديث كلمة المرور",
+        body: "Your password has been updated by an administrator. Please use your new password on your next login.",
+        body_ar: "تم تحديث كلمة مرورك من قِبل المسؤول. يرجى استخدام كلمة المرور الجديدة في تسجيل دخولك التالي.",
+        is_read: false,
+      }).throwOnError();
+    }
+
+    res.json({ success: true, message: "Password updated successfully" });
   } catch (err) {
-    req.log.error({ err }, "Failed to reset user password");
+    req.log.error({ err }, "Failed to set user password");
     res.status(500).json({ error: "Internal server error" });
   }
 });

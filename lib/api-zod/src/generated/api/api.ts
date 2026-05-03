@@ -280,13 +280,19 @@ export const DeleteUserResponse = zod.object({
 });
 
 /**
- * @summary Send password reset email to user (admin only)
+ * @summary Directly set a new password for a user (admin only, no email sent)
  */
-export const ResetUserPasswordParams = zod.object({
+export const SetUserPasswordParams = zod.object({
   id: zod.coerce.string(),
 });
 
-export const ResetUserPasswordResponse = zod.object({
+export const setUserPasswordBodyPasswordMin = 8;
+
+export const SetUserPasswordBody = zod.object({
+  password: zod.string().min(setUserPasswordBodyPasswordMin),
+});
+
+export const SetUserPasswordResponse = zod.object({
   success: zod.boolean(),
   message: zod.string().nullish(),
 });

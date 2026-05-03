@@ -412,6 +412,11 @@ export interface BroadcastList {
   items: BroadcastItem[];
 }
 
+export interface SetPasswordBody {
+  /** @minLength 8 */
+  password: string;
+}
+
 export interface UpdateProfileBody {
   /** @nullable */
   full_name?: string | null;
