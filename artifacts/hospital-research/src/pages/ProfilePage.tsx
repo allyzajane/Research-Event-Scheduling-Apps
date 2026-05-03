@@ -162,8 +162,13 @@ export default function ProfilePage() {
     active_type?:  string;
   }) => {
     if (data.uploaded_url !== undefined) { setSigUploaded(data.uploaded_url); updateUser({ signature_url: data.uploaded_url } as Parameters<typeof updateUser>[0]); }
-    if (data.drawn_url    !== undefined) { setSigDrawn(data.drawn_url);    updateUser({ signature_drawn_url: data.drawn_url } as Parameters<typeof updateUser>[0]); }
-    if (data.active_type  !== undefined) { setSigActiveType(data.active_type); updateUser({ signature_active_type: data.active_type } as Parameters<typeof updateUser>[0]); }
+    if (data.drawn_url    !== undefined) { setSigDrawn(data.drawn_url); updateUser({ signature_drawn_url: data.drawn_url } as Parameters<typeof updateUser>[0]); }
+    if (data.active_type  !== undefined) {
+      setSigActiveType(data.active_type);
+      updateUser({ signature_active_type: data.active_type } as Parameters<typeof updateUser>[0]);
+    }
+    if (data.active_type === "uploaded" && data.uploaded_url !== undefined) setSigActiveType("uploaded");
+    if (data.active_type === "drawn" && data.drawn_url !== undefined) setSigActiveType("drawn");
     await refreshProfile();
   };
 
