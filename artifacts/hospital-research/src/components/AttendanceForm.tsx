@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { cn } from "@/lib/utils";
 import {
-  ArrowLeft, CalendarDays, Clock, MapPin, Timer, User, PenLine,
+  CalendarDays, Clock, MapPin, Timer, User, PenLine,
   Briefcase, CheckCircle2, AlertCircle, Loader2, ShieldAlert,
 } from "lucide-react";
 
@@ -145,12 +145,11 @@ function SectionHeader({ step, label, color }: {
 
 interface Props {
   formId: string;
-  onBack: () => void;
   formOptions: CalendarEvent[];
   onSelectForm: (formId: string) => void;
 }
 
-export default function AttendanceForm({ formId, onBack, formOptions, onSelectForm }: Props) {
+export default function AttendanceForm({ formId, formOptions, onSelectForm }: Props) {
   const { t }                   = useTranslation();
   const { user, isAdmin, role } = useAuth();
   const isAdminRole             = ["admin", "ceo", "director"].includes(role);
@@ -204,7 +203,6 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
       <div className="flex flex-col items-center justify-center py-24 gap-4 text-center">
         <AlertCircle className="w-10 h-10 text-red-500" />
         <p className="text-sm text-red-600">{loadErr || "Form not found"}</p>
-        <Button variant="outline" onClick={onBack}>{t("meetingForm.backToList")}</Button>
       </div>
     );
   }
@@ -236,22 +234,15 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
     <div className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between gap-4 flex-wrap">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onBack} className="gap-1.5 text-muted-foreground">
-            <ArrowLeft className="w-4 h-4" />
-            {t("meetingForm.backToList")}
-          </Button>
-          <span className="text-muted-foreground">/</span>
-          <h2 className="text-lg font-semibold text-foreground">
-            {isAr && ev?.title_ar ? ev.title_ar : ev?.title || t("meetingForm.tabLabel")}
-          </h2>
-        </div>
+        <h2 className="min-w-0 text-lg font-semibold text-foreground break-words">
+          {isAr && ev?.title_ar ? ev.title_ar : ev?.title || t("meetingForm.tabLabel")}
+        </h2>
         <Badge className={cn("text-xs font-semibold border", gateColor)}>
           {gateLabel}
         </Badge>
       </div>
 
-      <Card className="border-border">
+      <Card className="border-border w-full">
         <CardHeader className="pb-4">
           <CardTitle className="text-base">{t("meetingForm.selectEvent")}</CardTitle>
         </CardHeader>
@@ -285,12 +276,12 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
       )}
 
       {/* ─── Section 1: Event Details ───────────────────────────────────────── */}
-      <Card className="border-border">
+      <Card className="border-border w-full">
         <CardHeader className="pb-4">
           <SectionHeader step="1" label={t("meetingForm.eventDetails")} color="text-blue-600 border-blue-100 dark:border-blue-900" />
         </CardHeader>
         <CardContent>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <ReadField
               label={t("meetingForm.meetingNo")}
               value={form?.meeting_no ? `#${form.meeting_no}` : "—"}
@@ -328,7 +319,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
           <SectionHeader step="2" label={t("meetingForm.attendeeDetails")} color="text-emerald-600 border-emerald-100 dark:border-emerald-900" />
         </CardHeader>
         <CardContent>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* No. */}
             <ReadField
               label={t("meetingForm.attendeeNo")}
