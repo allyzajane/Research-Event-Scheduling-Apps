@@ -16,7 +16,7 @@ import interactionPlugin, { DateClickArg } from "@fullcalendar/interaction";
 import { EventClickArg } from "@fullcalendar/core";
 import {
   MapPin, PlusCircle, Trash2, Calendar, Clock, Users,
-  ChevronDown, Check, X, Search, UserCheck,
+  ChevronDown, Check, X, Search, UserCheck, FileDown,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -503,6 +503,7 @@ export default function CalendarPage() {
   const [deleteId, setDeleteId] = useState<string | null>(null);
   const [form, setForm] = useState<EventForm>(emptyForm());
   const [saving, setSaving] = useState(false);
+  const [exporting, setExporting] = useState(false);
   const [dateRange, setDateRange] = useState<{ start: string; end: string } | null>(null);
   const [filterStatus, setFilterStatus] = useState<string>("all");
 
@@ -629,6 +630,129 @@ export default function CalendarPage() {
     return c;
   }, [events]);
 
+  // ── PDF export ───────────────────────────────────────────────────────────────
+  const handleExportPDF = async () => {
+    setExporting(true);
+    try {
+      const [{ default: jsPDF }, { default: autoTable }] = await Promise.all([
+        import("jspdf"),
+        import("jspdf-autotable"),
+      ]);
+      const doc = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageW = doc.internal.pageSize.width;
+
+      // Derive month label from current calendar view
+      const monthLabel = dateRange
+        ? new Date(dateRange.start).toLocaleString("en-US", { month: "long", year: "numeric" })
+        : new Date().toLocaleString("en-US", { month: "long", year: "numeric" });
+
+      // ── Header block ────────────────────────────────────────────────────────
+      doc.setFillColor(47, 154, 203);
+      doc.rect(0, 0, pageW, 22, "F");
+
+      doc.setTextColor(255, 255, 255);
+      doc.setFontSize(16);
+      doc.setFont("helvetica", "bold");
+      doc.text("Taif Children's Hospital", pageW / 2, 9, { align: "center" });
+
+      doc.setFontSize(10);
+      doc.setFont("helvetica", "normal");
+      doc.text(`Calendar Schedule — ${monthLabel}`, pageW / 2, 17, { align: "center" });
+
+      doc.setTextColor(0, 0, 0);
+
+      // ── Table ───────────────────────────────────────────────────────────────
+      const sorted = [...events].sort(
+        (a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+      );
+
+      const rows = sorted.map(ev => {
+        const ps = getPinStatus(ev);
+        const statusLabel =
+          ps === "past" ? "Past"
+          : ev.event_status === "canceled" ? "Canceled"
+          : ev.event_status === "rescheduled" ? "Rescheduled"
+          : "Active";
+
+        const timeStr = ev.all_day
+          ? "All Day"
+          : formatTimeAST(ev.start_time, "en") +
+            (ev.end_time ? ` – ${formatTimeAST(ev.end_time, "en")}` : "");
+
+        const titleStr = ev.title + (ev.title_ar ? `\n${ev.title_ar}` : "");
+        const descStr = ev.description || "";
+
+        return [
+          formatDateAST(ev.start_time, "en"),
+          timeStr,
+          titleStr,
+          ev.event_type.charAt(0).toUpperCase() + ev.event_type.slice(1),
+          ev.organizer || "—",
+          ev.venue || "—",
+          statusLabel,
+          descStr,
+        ];
+      });
+
+      autoTable(doc, {
+        head: [["Date", "Time", "Event", "Type", "Organizer", "Venue", "Status", "Description"]],
+        body: rows,
+        startY: 26,
+        styles: { fontSize: 8, cellPadding: 2.5, overflow: "linebreak" },
+        headStyles: {
+          fillColor: [47, 154, 203],
+          textColor: 255,
+          fontStyle: "bold",
+          fontSize: 8.5,
+        },
+        alternateRowStyles: { fillColor: [242, 249, 253] },
+        columnStyles: {
+          0: { cellWidth: 26 },
+          1: { cellWidth: 32 },
+          2: { cellWidth: 55 },
+          3: { cellWidth: 22 },
+          4: { cellWidth: 26 },
+          5: { cellWidth: 40 },
+          6: { cellWidth: 20 },
+          7: { cellWidth: 60 },
+        },
+        didDrawCell: (data) => {
+          // Colour status cell text
+          if (data.section === "body" && data.column.index === 6) {
+            const val = String(data.cell.raw);
+            const colour: [number, number, number] =
+              val === "Past" ? [220, 38, 38]
+              : val === "Canceled" ? [217, 119, 6]
+              : val === "Rescheduled" ? [14, 165, 233]
+              : [34, 197, 94];
+            doc.setTextColor(...colour);
+            doc.setFontSize(8);
+            doc.text(val, data.cell.x + 2, data.cell.y + data.cell.height / 2 + 1);
+            doc.setTextColor(0, 0, 0);
+          }
+        },
+      });
+
+      // ── Footer on every page ────────────────────────────────────────────────
+      const pageCount = doc.getNumberOfPages();
+      const pageH = doc.internal.pageSize.height;
+      for (let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(7.5);
+        doc.setTextColor(150);
+        doc.text(
+          `Generated on ${new Date().toLocaleDateString("en-US", { dateStyle: "full" })}  ·  Page ${i} of ${pageCount}`,
+          pageW / 2, pageH - 5, { align: "center" }
+        );
+        doc.setTextColor(0, 0, 0);
+      }
+
+      const slug = monthLabel.toLowerCase().replace(/\s+/g, "-");
+      doc.save(`taif-hospital-calendar-${slug}.pdf`);
+    } finally {
+      setExporting(false);
+    }
+  };
 
   return (
     <div className="p-6 space-y-5 max-w-7xl mx-auto">
@@ -639,9 +763,20 @@ export default function CalendarPage() {
           <h1 className="text-2xl font-bold text-foreground">{t("calendar.title")}</h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("calendar.subtitle")}</p>
         </div>
-        <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
-          <PlusCircle className="w-4 h-4" /> {t("calendar.createEvent")}
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleExportPDF}
+            disabled={exporting || events.length === 0}
+            className="gap-2"
+          >
+            <FileDown className="w-4 h-4" />
+            {exporting ? "Exporting…" : "Export PDF"}
+          </Button>
+          <Button onClick={() => { setForm(emptyForm()); setCreateOpen(true); }} className="gap-2">
+            <PlusCircle className="w-4 h-4" /> {t("calendar.createEvent")}
+          </Button>
+        </div>
       </div>
 
       {/* Legend + filter bar */}
