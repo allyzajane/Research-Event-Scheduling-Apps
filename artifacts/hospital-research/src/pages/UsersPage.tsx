@@ -465,17 +465,17 @@ export default function UsersPage() {
   const strength = strengthMeta[score];
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-4 flex-wrap">
         <div>
-          <p className="text-xs font-medium text-muted-foreground uppercase tracking-wide">{t("users.title")}</p>
+          <p className="text-sm font-semibold text-foreground">{t("users.title")}</p>
           <h1 className="text-2xl font-bold text-foreground">
             {getGreeting(isAr)}{(isAr && user?.full_name_ar ? `, ${user.full_name_ar}` : user?.full_name ? `, ${user.full_name}` : "")}
           </h1>
           <p className="text-sm text-muted-foreground mt-0.5">{t("users.subtitle")}</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2 flex-wrap justify-end">
           <Button variant="outline" onClick={() => setRolesDialogOpen(true)} className="gap-2">
             <Shield className="w-4 h-4" /> {t("users.rolesManager.manageRoles")}
           </Button>
@@ -486,20 +486,20 @@ export default function UsersPage() {
       </div>
 
       {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <Card className="border-border"><CardContent className="p-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <Card className="border-border rounded-2xl shadow-sm"><CardContent className="p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("users.stats.total")}</p>
           <p className="text-2xl font-bold mt-1">{stats?.total ?? 0}</p>
         </CardContent></Card>
-        <Card className="border-border"><CardContent className="p-4">
+        <Card className="border-border rounded-2xl shadow-sm"><CardContent className="p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("users.stats.active")}</p>
           <p className="text-2xl font-bold text-emerald-600 mt-1">{stats?.active ?? 0}</p>
         </CardContent></Card>
-        <Card className="border-border"><CardContent className="p-4">
+        <Card className="border-border rounded-2xl shadow-sm"><CardContent className="p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("users.stats.inactive")}</p>
           <p className="text-2xl font-bold text-muted-foreground mt-1">{stats?.inactive ?? 0}</p>
         </CardContent></Card>
-        <Card className="border-border"><CardContent className="p-4">
+        <Card className="border-border rounded-2xl shadow-sm"><CardContent className="p-5">
           <p className="text-xs text-muted-foreground uppercase tracking-wide mb-2">{t("users.stats.byRole")}</p>
           <div className="flex flex-wrap gap-1">
             {stats?.by_role?.slice(0, 3).map(r => (
@@ -512,20 +512,16 @@ export default function UsersPage() {
       </div>
 
       {/* Who's Online panel */}
-      <OnlineRosterPanel
-        session={session}
-        onlineOnly={onlineOnly}
-        onFilterOnline={() => setOnlineOnly(o => !o)}
-      />
+      <OnlineRosterPanel session={session} onlineOnly={onlineOnly} onFilterOnline={() => setOnlineOnly(o => !o)} />
 
       {/* Filters */}
       <div className="flex gap-3 flex-wrap items-center">
-        <div className="relative flex-1 min-w-48">
+        <div className="relative flex-1 min-w-[240px]">
           <Search className="absolute start-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input value={search} onChange={e => setSearch(e.target.value)} placeholder={t("users.searchPlaceholder")} className="ps-10" />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="w-40"><SelectValue /></SelectTrigger>
+          <SelectTrigger className="w-44"><SelectValue /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">{t("common.all")}</SelectItem>
             {(roles ?? []).map(r => <SelectItem key={r.name} value={r.name}>{getRoleLabel(roles, r.name, isAr)}</SelectItem>)}
@@ -547,7 +543,7 @@ export default function UsersPage() {
       </div>
 
       {/* Table */}
-      <Card className="border-border overflow-hidden">
+      <Card className="border-border overflow-hidden rounded-2xl shadow-sm">
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead className="bg-muted/50 border-b border-border">
@@ -661,9 +657,9 @@ export default function UsersPage() {
                   </tr>
                   ))
                 ) : (
-                  <tr><td colSpan={7} className="py-16 text-center text-muted-foreground">
+                  <tr><td colSpan={7} className="py-24 text-center text-muted-foreground">
                     <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                    <p>{onlineOnly ? (isAr ? "لا أحد متصل حالياً" : "No staff online right now") : t("users.noUsers")}</p>
+                    <p className="text-base font-medium">{onlineOnly ? (isAr ? "لا أحد متصل حالياً" : "No staff online right now") : t("users.noUsers")}</p>
                   </td></tr>
                 );
               })()}
