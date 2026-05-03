@@ -271,6 +271,24 @@ export default function ProfilePage() {
                 </div>
               </div>
 
+              {/* ── Signature (inline, below Full Name) ── */}
+              <div className="space-y-1.5 pt-1 border-t border-border">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-6 h-6 rounded-md bg-primary/10 flex items-center justify-center">
+                    <PenLine className="w-3 h-3 text-primary" />
+                  </div>
+                  <Label className="text-sm font-medium">{t("profile.signatureTitle")}</Label>
+                </div>
+                <p className="text-xs text-muted-foreground mb-2">{t("profile.signatureDesc")}</p>
+                {session && (
+                  <SignaturePanel
+                    currentUrl={signatureUrl}
+                    sessionToken={session.access_token}
+                    onSaved={handleSignatureSaved}
+                  />
+                )}
+              </div>
+
               <div className="space-y-1.5">
                 <Label>{t("profile.department")}</Label>
                 <Input
@@ -301,7 +319,7 @@ export default function ProfilePage() {
                 ...(user.full_name    ? [{ icon: User,     label: t("profile.fullName"),    value: user.full_name }]    : []),
                 ...(user.full_name_ar ? [{ icon: User,     label: t("profile.fullNameAr"),  value: user.full_name_ar }] : []),
               ].map((item, i) => (
-                <div key={i} className="flex items-center gap-3 py-3 border-b border-border last:border-0">
+                <div key={i} className="flex items-center gap-3 py-3 border-b border-border">
                   <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
                     <item.icon className="w-4 h-4 text-muted-foreground" />
                   </div>
@@ -311,29 +329,29 @@ export default function ProfilePage() {
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
 
-      {/* ── Signature Card ──────────────────────────────────────────── */}
-      <Card className="border-border">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-primary/10 flex items-center justify-center">
-              <PenLine className="w-3.5 h-3.5 text-primary" />
+              {/* ── Signature row (view mode) ── */}
+              <div className="flex items-start gap-3 py-3">
+                <div className="w-9 h-9 rounded-lg bg-muted flex items-center justify-center flex-shrink-0">
+                  <PenLine className="w-4 h-4 text-muted-foreground" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-xs text-muted-foreground mb-2">{t("profile.signatureTitle")}</p>
+                  {signatureUrl ? (
+                    <div className="inline-flex items-center rounded-lg border border-border bg-white dark:bg-slate-950 px-3 py-2">
+                      <img
+                        src={`${signatureUrl}?t=${Date.now()}`}
+                        alt="Signature"
+                        className="max-h-10 max-w-[180px] object-contain"
+                        onError={e => { (e.target as HTMLImageElement).style.display = "none"; }}
+                      />
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">{t("profile.signatureNone")}</p>
+                  )}
+                </div>
+              </div>
             </div>
-            {t("profile.signatureTitle")}
-          </CardTitle>
-          <p className="text-xs text-muted-foreground mt-0.5">{t("profile.signatureDesc")}</p>
-        </CardHeader>
-        <CardContent className="pt-0">
-          {session && (
-            <SignaturePanel
-              currentUrl={signatureUrl}
-              sessionToken={session.access_token}
-              onSaved={handleSignatureSaved}
-            />
           )}
         </CardContent>
       </Card>
