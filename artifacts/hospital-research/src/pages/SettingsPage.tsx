@@ -4,12 +4,17 @@ import {
   useGetLandingPage, useUpdateLandingPage, getGetLandingPageQueryKey,
   useListSections, getListSectionsQueryKey,
   useCreateSection, useUpdateSection, useDeleteSection,
-  useGetThemeSettings, useUpdateThemeSettings, getGetThemeSettingsQueryKey
+  useGetThemeSettings, useUpdateThemeSettings, getGetThemeSettingsQueryKey,
+  useGetAllDashboardConfigs, getGetAllDashboardConfigsQueryKey,
+  useUpdateRoleDashboardConfig,
 } from "@workspace/api-client-react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/contexts/AuthContext";
 import i18n from "i18next";
-import { Settings, Palette, Layout, Image, Plus, Pencil, Trash2, GripVertical, Save, Upload } from "lucide-react";
+import {
+  Settings, Palette, Layout, Image, Plus, Pencil, Trash2,
+  GripVertical, Save, Upload, LayoutDashboard, Check,
+} from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 const THEME_STYLES = ["minimalist", "modern", "animated"];
@@ -32,6 +38,29 @@ const PRESET_COLORS = [
   { name: "Rose", value: "#e11d48" },
   { name: "Amber", value: "#d97706" },
 ];
+
+const ALL_ROLES = ["admin", "ceo", "director", "doctor", "nurse", "staff"] as const;
+type Role = typeof ALL_ROLES[number];
+
+const ALL_WIDGETS = [
+  "stat_users",
+  "stat_documents",
+  "stat_articles",
+  "stat_events",
+  "recent_documents",
+  "recent_articles",
+  "upcoming_events",
+  "quick_actions",
+] as const;
+
+const ROLE_COLORS: Record<Role, string> = {
+  admin:    "bg-red-100 text-red-700 dark:bg-red-950 dark:text-red-300",
+  ceo:      "bg-purple-100 text-purple-700 dark:bg-purple-950 dark:text-purple-300",
+  director: "bg-blue-100 text-blue-700 dark:bg-blue-950 dark:text-blue-300",
+  doctor:   "bg-teal-100 text-teal-700 dark:bg-teal-950 dark:text-teal-300",
+  nurse:    "bg-pink-100 text-pink-700 dark:bg-pink-950 dark:text-pink-300",
+  staff:    "bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300",
+};
 
 interface SectionForm {
   title: string; title_ar: string; description: string; description_ar: string;
@@ -49,14 +78,16 @@ export default function SettingsPage() {
   const { data: landing, isLoading: landingLoading } = useGetLandingPage({ query: { queryKey: getGetLandingPageQueryKey() } });
   const { data: theme, isLoading: themeLoading } = useGetThemeSettings({ query: { queryKey: getGetThemeSettingsQueryKey() } });
   const { data: sections, isLoading: sectionsLoading } = useListSections({ query: { queryKey: getListSectionsQueryKey() } });
+  const { data: allConfigs, isLoading: configsLoading } = useGetAllDashboardConfigs({ query: { queryKey: getGetAllDashboardConfigsQueryKey() } });
 
   const updateLanding = useUpdateLandingPage();
   const updateTheme = useUpdateThemeSettings();
   const createSection = useCreateSection();
   const updateSection = useUpdateSection();
   const deleteSection = useDeleteSection();
+  const updateRoleConfig = useUpdateRoleDashboardConfig();
 
-  // Landing form state
+  // Landing form
   const [landingForm, setLandingForm] = useState({ hospital_name: "", hospital_name_ar: "", logo_url: "", background_url: "" });
   const [themeForm, setThemeForm] = useState({ primary_color: "#2f9acb", style: "modern", font_family: "Plus Jakarta Sans" });
   const [savingLanding, setSavingLanding] = useState(false);
@@ -69,6 +100,13 @@ export default function SettingsPage() {
   const [uploadingLogo, setUploadingLogo] = useState(false);
   const [uploadingBg, setUploadingBg] = useState(false);
   const [uploadMsg, setUploadMsg] = useState("");
+
+  // Dashboard widget state per role
+  const [widgetDraft, setWidgetDraft] = useState<Record<Role, string[]>>({
+    admin: [], ceo: [], director: [], doctor: [], nurse: [], staff: [],
+  });
+  const [savingRole, setSavingRole] = useState<Role | null>(null);
+  const [widgetMsg, setWidgetMsg] = useState<{ role: Role; ok: boolean; text: string } | null>(null);
 
   useEffect(() => {
     if (landing) {
@@ -90,6 +128,18 @@ export default function SettingsPage() {
       });
     }
   }, [theme]);
+
+  useEffect(() => {
+    if (allConfigs?.configs) {
+      const draft: Record<Role, string[]> = { admin: [], ceo: [], director: [], doctor: [], nurse: [], staff: [] };
+      for (const cfg of allConfigs.configs) {
+        if (ALL_ROLES.includes(cfg.role as Role)) {
+          draft[cfg.role as Role] = cfg.widgets;
+        }
+      }
+      setWidgetDraft(draft);
+    }
+  }, [allConfigs]);
 
   const invalidateLanding = () => {
     qc.invalidateQueries({ queryKey: getGetLandingPageQueryKey() });
@@ -161,6 +211,29 @@ export default function SettingsPage() {
     invalidateLanding(); setDeleteSectionId(null);
   };
 
+  const handleSaveWidgets = async (role: Role) => {
+    setSavingRole(role);
+    setWidgetMsg(null);
+    try {
+      await updateRoleConfig.mutateAsync({ role, data: { widgets: widgetDraft[role] } });
+      qc.invalidateQueries({ queryKey: getGetAllDashboardConfigsQueryKey() });
+      setWidgetMsg({ role, ok: true, text: t("settings.widgetsSaved") });
+    } catch {
+      setWidgetMsg({ role, ok: false, text: t("settings.widgetsSaveFailed") });
+    } finally {
+      setSavingRole(null);
+    }
+  };
+
+  const toggleWidget = (role: Role, widget: string) => {
+    setWidgetDraft(prev => {
+      const current = prev[role];
+      const next = current.includes(widget) ? current.filter(w => w !== widget) : [...current, widget];
+      return { ...prev, [role]: next };
+    });
+    setWidgetMsg(null);
+  };
+
   const SectionFormFields = ({ val, onChange }: { val: SectionForm; onChange: (v: SectionForm) => void }) => (
     <div className="space-y-4 py-2">
       <div className="grid grid-cols-2 gap-3">
@@ -204,10 +277,11 @@ export default function SettingsPage() {
       </div>
 
       <Tabs defaultValue="branding">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 flex-wrap h-auto gap-1">
           <TabsTrigger value="branding" className="gap-2"><Image className="w-3.5 h-3.5" />{t("settings.branding")}</TabsTrigger>
           <TabsTrigger value="theme" className="gap-2"><Palette className="w-3.5 h-3.5" />{t("settings.theme")}</TabsTrigger>
           <TabsTrigger value="sections" className="gap-2"><Layout className="w-3.5 h-3.5" />{t("settings.sections")}</TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-2"><LayoutDashboard className="w-3.5 h-3.5" />{t("settings.dashboardLayout")}</TabsTrigger>
         </TabsList>
 
         {/* BRANDING TAB */}
@@ -231,7 +305,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Logo upload */}
                   <div className="space-y-2">
                     <Label>{t("settings.logoUpload")}</Label>
                     <div className="flex items-center gap-3">
@@ -243,11 +316,8 @@ export default function SettingsPage() {
                         </div>
                       )}
                       <div className="flex-1">
-                        <Input
-                          type="file" accept="image/*"
-                          className="text-sm"
-                          onChange={e => e.target.files?.[0] && handleUpload("logo_url", e.target.files[0])}
-                        />
+                        <Input type="file" accept="image/*" className="text-sm"
+                          onChange={e => e.target.files?.[0] && handleUpload("logo_url", e.target.files[0])} />
                         <p className="text-xs text-muted-foreground mt-1">{t("settings.logoHint")}</p>
                       </div>
                       {uploadingLogo && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
@@ -258,7 +328,6 @@ export default function SettingsPage() {
                     </div>
                   </div>
 
-                  {/* Background upload */}
                   <div className="space-y-2">
                     <Label>{t("settings.backgroundUpload")}</Label>
                     <div className="flex items-center gap-3">
@@ -266,11 +335,8 @@ export default function SettingsPage() {
                         <img src={landingForm.background_url} alt="Bg" className="h-12 w-20 object-cover border border-border rounded-lg" />
                       )}
                       <div className="flex-1">
-                        <Input
-                          type="file" accept="image/*"
-                          className="text-sm"
-                          onChange={e => e.target.files?.[0] && handleUpload("background_url", e.target.files[0])}
-                        />
+                        <Input type="file" accept="image/*" className="text-sm"
+                          onChange={e => e.target.files?.[0] && handleUpload("background_url", e.target.files[0])} />
                         <p className="text-xs text-muted-foreground mt-1">{t("settings.backgroundHint")}</p>
                       </div>
                       {uploadingBg && <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />}
@@ -405,6 +471,88 @@ export default function SettingsPage() {
                 <Layout className="w-8 h-8 mx-auto mb-2 opacity-40" />
                 <p className="text-sm">{i18n.language === "ar" ? "لا توجد أقسام بعد" : "No sections yet"}</p>
                 <Button variant="outline" onClick={() => setCreateSectionOpen(true)} className="mt-3">{t("settings.addSection")}</Button>
+              </div>
+            )}
+          </div>
+        </TabsContent>
+
+        {/* DASHBOARD LAYOUT TAB */}
+        <TabsContent value="dashboard">
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-base font-semibold text-foreground">{t("settings.dashboardLayout")}</h3>
+              <p className="text-sm text-muted-foreground mt-0.5">{t("settings.dashboardSubtitle")}</p>
+            </div>
+
+            {configsLoading ? (
+              <div className="space-y-3">{[...Array(6)].map((_, i) => <Skeleton key={i} className="h-32 rounded-xl" />)}</div>
+            ) : (
+              <div className="space-y-4">
+                {ALL_ROLES.map(role => {
+                  const currentWidgets = widgetDraft[role];
+                  const saving = savingRole === role;
+                  const msg = widgetMsg?.role === role ? widgetMsg : null;
+
+                  return (
+                    <Card key={role} className="border-border">
+                      <CardHeader className="pb-3 flex-row items-center justify-between space-y-0">
+                        <div className="flex items-center gap-3">
+                          <Badge className={cn("text-xs px-2.5 py-0.5 font-semibold rounded-full border-0", ROLE_COLORS[role])}>
+                            {t(`users.roles.${role}`)}
+                          </Badge>
+                          <span className="text-sm text-muted-foreground">
+                            {currentWidgets.length}/{ALL_WIDGETS.length} {i18n.language === "ar" ? "عناصر" : "widgets"}
+                          </span>
+                        </div>
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveWidgets(role)}
+                          disabled={saving}
+                          className="gap-1.5 h-8 text-xs"
+                        >
+                          {saving ? (
+                            <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                          ) : (
+                            <Save className="w-3.5 h-3.5" />
+                          )}
+                          {saving ? t("common.loading") : t("common.save")}
+                        </Button>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                          {ALL_WIDGETS.map(widget => {
+                            const active = currentWidgets.includes(widget);
+                            return (
+                              <button
+                                key={widget}
+                                onClick={() => toggleWidget(role, widget)}
+                                className={cn(
+                                  "flex items-center gap-2 p-2.5 rounded-lg border text-xs font-medium transition-all text-start",
+                                  active
+                                    ? "border-primary bg-primary/5 text-primary"
+                                    : "border-border text-muted-foreground hover:border-muted-foreground"
+                                )}
+                              >
+                                <div className={cn(
+                                  "w-4 h-4 rounded flex items-center justify-center flex-shrink-0 border",
+                                  active ? "bg-primary border-primary" : "border-border"
+                                )}>
+                                  {active && <Check className="w-2.5 h-2.5 text-white" />}
+                                </div>
+                                <span className="truncate">{t(`settings.widgets.${widget}`)}</span>
+                              </button>
+                            );
+                          })}
+                        </div>
+                        {msg && (
+                          <p className={cn("text-xs mt-3", msg.ok ? "text-emerald-600" : "text-destructive")}>
+                            {msg.text}
+                          </p>
+                        )}
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>

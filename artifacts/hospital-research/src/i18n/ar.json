@@ -197,6 +197,7 @@
     "theme": "المظهر",
     "landingPage": "الصفحة الرئيسية",
     "branding": "الهوية البصرية",
+    "dashboardLayout": "تخطيط لوحة التحكم",
     "primaryColor": "اللون الأساسي",
     "themeColors": "ألوان النظام",
     "fontFamily": "نوع الخط",
@@ -224,7 +225,20 @@
     "sectionOrder": "ترتيب العرض",
     "sectionVisible": "مرئي",
     "saved": "تم حفظ الإعدادات بنجاح",
-    "uploadSuccess": "تم رفع الملف بنجاح"
+    "uploadSuccess": "تم رفع الملف بنجاح",
+    "dashboardSubtitle": "اختر عناصر لوحة التحكم التي يراها كل دور وظيفي",
+    "widgetsSaved": "تم حفظ إعدادات لوحة التحكم",
+    "widgetsSaveFailed": "فشل حفظ إعدادات لوحة التحكم",
+    "widgets": {
+      "stat_users": "إجمالي المستخدمين (إحصائية)",
+      "stat_documents": "إجمالي الوثائق (إحصائية)",
+      "stat_articles": "إجمالي المقالات (إحصائية)",
+      "stat_events": "الأحداث القادمة (إحصائية)",
+      "recent_documents": "قائمة الوثائق الأخيرة",
+      "recent_articles": "قائمة المقالات الأخيرة",
+      "upcoming_events": "قائمة الأحداث القادمة",
+      "quick_actions": "لوحة الإجراءات السريعة"
+    }
   },
   "profile": {
     "title": "ملفي الشخصي",

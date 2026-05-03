@@ -17,6 +17,7 @@ import type {
 } from "@tanstack/react-query";
 
 import type {
+  AllRoleDashboardConfigs,
   Article,
   ArticleList,
   CalendarEvent,
@@ -38,6 +39,7 @@ import type {
   ListUsersParams,
   Notification,
   NotificationList,
+  RoleDashboardConfig,
   Section,
   SuccessResponse,
   ThemeSettings,
@@ -45,6 +47,7 @@ import type {
   UpdateArticleBody,
   UpdateEventBody,
   UpdateLandingPageBody,
+  UpdateRoleDashboardBody,
   UpdateSectionBody,
   UpdateThemeSettingsBody,
   UpdateUserBody,
@@ -3395,3 +3398,245 @@ export function useGetDashboardSummary<
 
   return { ...query, queryKey: queryOptions.queryKey };
 }
+
+/**
+ * @summary Get dashboard widget config for current user role
+ */
+export const getGetMyDashboardConfigUrl = () => {
+  return `/api/role-dashboard/config`;
+};
+
+export const getMyDashboardConfig = async (
+  options?: RequestInit,
+): Promise<RoleDashboardConfig> => {
+  return customFetch<RoleDashboardConfig>(getGetMyDashboardConfigUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetMyDashboardConfigQueryKey = () => {
+  return [`/api/role-dashboard/config`] as const;
+};
+
+export const getGetMyDashboardConfigQueryOptions = <
+  TData = Awaited<ReturnType<typeof getMyDashboardConfig>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyDashboardConfig>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey = queryOptions?.queryKey ?? getGetMyDashboardConfigQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getMyDashboardConfig>>
+  > = ({ signal }) => getMyDashboardConfig({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getMyDashboardConfig>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetMyDashboardConfigQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getMyDashboardConfig>>
+>;
+export type GetMyDashboardConfigQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get dashboard widget config for current user role
+ */
+
+export function useGetMyDashboardConfig<
+  TData = Awaited<ReturnType<typeof getMyDashboardConfig>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getMyDashboardConfig>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetMyDashboardConfigQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Get all role dashboard widget configs (admin only)
+ */
+export const getGetAllDashboardConfigsUrl = () => {
+  return `/api/role-dashboard/configs`;
+};
+
+export const getAllDashboardConfigs = async (
+  options?: RequestInit,
+): Promise<AllRoleDashboardConfigs> => {
+  return customFetch<AllRoleDashboardConfigs>(getGetAllDashboardConfigsUrl(), {
+    ...options,
+    method: "GET",
+  });
+};
+
+export const getGetAllDashboardConfigsQueryKey = () => {
+  return [`/api/role-dashboard/configs`] as const;
+};
+
+export const getGetAllDashboardConfigsQueryOptions = <
+  TData = Awaited<ReturnType<typeof getAllDashboardConfigs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAllDashboardConfigs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}) => {
+  const { query: queryOptions, request: requestOptions } = options ?? {};
+
+  const queryKey =
+    queryOptions?.queryKey ?? getGetAllDashboardConfigsQueryKey();
+
+  const queryFn: QueryFunction<
+    Awaited<ReturnType<typeof getAllDashboardConfigs>>
+  > = ({ signal }) => getAllDashboardConfigs({ signal, ...requestOptions });
+
+  return { queryKey, queryFn, ...queryOptions } as UseQueryOptions<
+    Awaited<ReturnType<typeof getAllDashboardConfigs>>,
+    TError,
+    TData
+  > & { queryKey: QueryKey };
+};
+
+export type GetAllDashboardConfigsQueryResult = NonNullable<
+  Awaited<ReturnType<typeof getAllDashboardConfigs>>
+>;
+export type GetAllDashboardConfigsQueryError = ErrorType<unknown>;
+
+/**
+ * @summary Get all role dashboard widget configs (admin only)
+ */
+
+export function useGetAllDashboardConfigs<
+  TData = Awaited<ReturnType<typeof getAllDashboardConfigs>>,
+  TError = ErrorType<unknown>,
+>(options?: {
+  query?: UseQueryOptions<
+    Awaited<ReturnType<typeof getAllDashboardConfigs>>,
+    TError,
+    TData
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseQueryResult<TData, TError> & { queryKey: QueryKey } {
+  const queryOptions = getGetAllDashboardConfigsQueryOptions(options);
+
+  const query = useQuery(queryOptions) as UseQueryResult<TData, TError> & {
+    queryKey: QueryKey;
+  };
+
+  return { ...query, queryKey: queryOptions.queryKey };
+}
+
+/**
+ * @summary Update dashboard widget config for a role (admin only)
+ */
+export const getUpdateRoleDashboardConfigUrl = (role: string) => {
+  return `/api/role-dashboard/config/${role}`;
+};
+
+export const updateRoleDashboardConfig = async (
+  role: string,
+  updateRoleDashboardBody: UpdateRoleDashboardBody,
+  options?: RequestInit,
+): Promise<RoleDashboardConfig> => {
+  return customFetch<RoleDashboardConfig>(
+    getUpdateRoleDashboardConfigUrl(role),
+    {
+      ...options,
+      method: "PATCH",
+      headers: { "Content-Type": "application/json", ...options?.headers },
+      body: JSON.stringify(updateRoleDashboardBody),
+    },
+  );
+};
+
+export const getUpdateRoleDashboardConfigMutationOptions = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRoleDashboardConfig>>,
+    TError,
+    { role: string; data: BodyType<UpdateRoleDashboardBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationOptions<
+  Awaited<ReturnType<typeof updateRoleDashboardConfig>>,
+  TError,
+  { role: string; data: BodyType<UpdateRoleDashboardBody> },
+  TContext
+> => {
+  const mutationKey = ["updateRoleDashboardConfig"];
+  const { mutation: mutationOptions, request: requestOptions } = options
+    ? options.mutation &&
+      "mutationKey" in options.mutation &&
+      options.mutation.mutationKey
+      ? options
+      : { ...options, mutation: { ...options.mutation, mutationKey } }
+    : { mutation: { mutationKey }, request: undefined };
+
+  const mutationFn: MutationFunction<
+    Awaited<ReturnType<typeof updateRoleDashboardConfig>>,
+    { role: string; data: BodyType<UpdateRoleDashboardBody> }
+  > = (props) => {
+    const { role, data } = props ?? {};
+
+    return updateRoleDashboardConfig(role, data, requestOptions);
+  };
+
+  return { mutationFn, ...mutationOptions };
+};
+
+export type UpdateRoleDashboardConfigMutationResult = NonNullable<
+  Awaited<ReturnType<typeof updateRoleDashboardConfig>>
+>;
+export type UpdateRoleDashboardConfigMutationBody =
+  BodyType<UpdateRoleDashboardBody>;
+export type UpdateRoleDashboardConfigMutationError = ErrorType<unknown>;
+
+/**
+ * @summary Update dashboard widget config for a role (admin only)
+ */
+export const useUpdateRoleDashboardConfig = <
+  TError = ErrorType<unknown>,
+  TContext = unknown,
+>(options?: {
+  mutation?: UseMutationOptions<
+    Awaited<ReturnType<typeof updateRoleDashboardConfig>>,
+    TError,
+    { role: string; data: BodyType<UpdateRoleDashboardBody> },
+    TContext
+  >;
+  request?: SecondParameter<typeof customFetch>;
+}): UseMutationResult<
+  Awaited<ReturnType<typeof updateRoleDashboardConfig>>,
+  TError,
+  { role: string; data: BodyType<UpdateRoleDashboardBody> },
+  TContext
+> => {
+  return useMutation(getUpdateRoleDashboardConfigMutationOptions(options));
+};

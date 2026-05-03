@@ -25,6 +25,8 @@ tags:
     description: Admin settings
   - name: notifications
     description: User notifications
+  - name: roleDashboard
+    description: Role-based dashboard widget configuration
 paths:
   /notifications:
     get:
@@ -751,6 +753,57 @@ paths:
               schema:
                 $ref: "#/components/schemas/DashboardSummary"
 
+  /role-dashboard/config:
+    get:
+      operationId: getMyDashboardConfig
+      tags: [roleDashboard]
+      summary: Get dashboard widget config for current user role
+      responses:
+        "200":
+          description: Widget config for caller's role
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleDashboardConfig"
+
+  /role-dashboard/configs:
+    get:
+      operationId: getAllDashboardConfigs
+      tags: [roleDashboard]
+      summary: Get all role dashboard widget configs (admin only)
+      responses:
+        "200":
+          description: All role configs
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/AllRoleDashboardConfigs"
+
+  /role-dashboard/config/{role}:
+    patch:
+      operationId: updateRoleDashboardConfig
+      tags: [roleDashboard]
+      summary: Update dashboard widget config for a role (admin only)
+      parameters:
+        - name: role
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/UpdateRoleDashboardBody"
+      responses:
+        "200":
+          description: Updated config
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RoleDashboardConfig"
+
 components:
   schemas:
     HealthStatus:
@@ -1348,6 +1401,37 @@ components:
         count:
           type: integer
       required: [count]
+
+    RoleDashboardConfig:
+      type: object
+      properties:
+        role:
+          type: string
+        widgets:
+          type: array
+          items:
+            type: string
+        updated_at:
+          type: ["string", "null"]
+      required: [role, widgets]
+
+    AllRoleDashboardConfigs:
+      type: object
+      properties:
+        configs:
+          type: array
+          items:
+            $ref: "#/components/schemas/RoleDashboardConfig"
+      required: [configs]
+
+    UpdateRoleDashboardBody:
+      type: object
+      properties:
+        widgets:
+          type: array
+          items:
+            type: string
+      required: [widgets]
 
     DashboardSummary:
       type: object

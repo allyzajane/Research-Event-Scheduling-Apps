@@ -297,7 +297,28 @@ create policy "Auth delete hospital-files" on storage.objects
 
 
 -- ─────────────────────────────────────────────────────────────
--- 10. CLEANUP FUNCTION  (free-tier DB size management)
+-- 10. ROLE DASHBOARD CONFIGS
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.role_dashboard_configs (
+  role       text        primary key
+             check (role in ('admin','ceo','director','doctor','nurse','staff')),
+  widgets    text[]      not null default '{}',
+  updated_at timestamptz not null default now()
+);
+
+alter table public.role_dashboard_configs enable row level security;
+
+drop policy if exists "Public read role_dashboard_configs" on public.role_dashboard_configs;
+create policy "Public read role_dashboard_configs" on public.role_dashboard_configs
+  for select using (true);
+
+drop policy if exists "Service write role_dashboard_configs" on public.role_dashboard_configs;
+create policy "Service write role_dashboard_configs" on public.role_dashboard_configs
+  for all using (true) with check (true);
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 11. CLEANUP FUNCTION  (free-tier DB size management)
 -- ─────────────────────────────────────────────────────────────
 -- Deletes notifications older than 30 days and caps each user at 50.
 -- Called automatically by the API after every bulk notification fan-out.

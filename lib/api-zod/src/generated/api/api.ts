@@ -809,3 +809,42 @@ export const GetDashboardSummaryResponse = zod.object({
     }),
   ),
 });
+
+/**
+ * @summary Get dashboard widget config for current user role
+ */
+export const GetMyDashboardConfigResponse = zod.object({
+  role: zod.string(),
+  widgets: zod.array(zod.string()),
+  updated_at: zod.string().nullish(),
+});
+
+/**
+ * @summary Get all role dashboard widget configs (admin only)
+ */
+export const GetAllDashboardConfigsResponse = zod.object({
+  configs: zod.array(
+    zod.object({
+      role: zod.string(),
+      widgets: zod.array(zod.string()),
+      updated_at: zod.string().nullish(),
+    }),
+  ),
+});
+
+/**
+ * @summary Update dashboard widget config for a role (admin only)
+ */
+export const UpdateRoleDashboardConfigParams = zod.object({
+  role: zod.coerce.string(),
+});
+
+export const UpdateRoleDashboardConfigBody = zod.object({
+  widgets: zod.array(zod.string()),
+});
+
+export const UpdateRoleDashboardConfigResponse = zod.object({
+  role: zod.string(),
+  widgets: zod.array(zod.string()),
+  updated_at: zod.string().nullish(),
+});

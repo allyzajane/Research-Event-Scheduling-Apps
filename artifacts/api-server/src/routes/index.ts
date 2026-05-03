@@ -9,6 +9,7 @@ import calendarRouter from "./calendar";
 import settingsRouter from "./settings";
 import dashboardRouter from "./dashboard";
 import notificationsRouter from "./notifications";
+import roleDashboardRouter from "./roleDashboard";
 
 const router: IRouter = Router();
 
@@ -22,5 +23,6 @@ router.use(calendarRouter);
 router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(notificationsRouter);
+router.use(roleDashboardRouter);
 
 export default router;

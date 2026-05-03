@@ -415,6 +415,21 @@ export interface UnreadCount {
   count: number;
 }
 
+export interface RoleDashboardConfig {
+  role: string;
+  widgets: string[];
+  /** @nullable */
+  updated_at?: string | null;
+}
+
+export interface AllRoleDashboardConfigs {
+  configs: RoleDashboardConfig[];
+}
+
+export interface UpdateRoleDashboardBody {
+  widgets: string[];
+}
+
 export interface DashboardSummary {
   total_users: number;
   total_documents: number;

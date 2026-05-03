@@ -197,6 +197,7 @@
     "theme": "Theme",
     "landingPage": "Landing Page",
     "branding": "Branding",
+    "dashboardLayout": "Dashboard Layout",
     "primaryColor": "Primary Color",
     "themeColors": "Theme Colors",
     "fontFamily": "Font Family",
@@ -224,7 +225,20 @@
     "sectionOrder": "Display Order",
     "sectionVisible": "Visible",
     "saved": "Settings saved successfully",
-    "uploadSuccess": "File uploaded successfully"
+    "uploadSuccess": "File uploaded successfully",
+    "dashboardSubtitle": "Choose which dashboard widgets each role can see",
+    "widgetsSaved": "Widget configuration saved",
+    "widgetsSaveFailed": "Failed to save widget configuration",
+    "widgets": {
+      "stat_users": "Total Users (stat)",
+      "stat_documents": "Total Documents (stat)",
+      "stat_articles": "Total Articles (stat)",
+      "stat_events": "Upcoming Events (stat)",
+      "recent_documents": "Recent Documents list",
+      "recent_articles": "Recent Articles list",
+      "upcoming_events": "Upcoming Events list",
+      "quick_actions": "Quick Actions panel"
+    }
   },
   "profile": {
     "title": "My Profile",
