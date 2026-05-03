@@ -40,20 +40,18 @@ async function uploadSignatureForUser(opts: {
 
   if (uploadError) throw Object.assign(new Error("Upload failed: " + uploadError.message), { status: 500 });
 
-  const { data: urlData } = supabaseAdmin.storage.from("hospital-files").getPublicUrl(storagePath);
-  const signatureUrl = urlData.publicUrl;
-
   const profileField = sig_type === "drawn" ? "signature_drawn_url" : "signature_url";
   await supabaseAdmin
     .from("profiles")
     .update({
-      [profileField]:         signatureUrl,
+      [profileField]:         storagePath,
       signature_active_type:  sig_type,
       updated_at:             new Date().toISOString(),
     })
     .eq("id", userId);
 
-  return { url: signatureUrl, path: storagePath };
+  const { data: urlData } = supabaseAdmin.storage.from("hospital-files").getPublicUrl(storagePath);
+  return { url: urlData.publicUrl, path: storagePath };
 }
 
 // ─── GET /auth/me ─────────────────────────────────────────────────────────
