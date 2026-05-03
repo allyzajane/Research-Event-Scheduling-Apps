@@ -8,13 +8,12 @@ import { supabase } from "@/lib/supabase";
 
 interface Props {
   currentUrl: string | null | undefined;
-  sessionToken: string;
   onSaved: (url: string | null) => void;
 }
 
 type Tab = "draw" | "upload";
 
-export default function SignaturePanel({ currentUrl, sessionToken, onSaved }: Props) {
+export default function SignaturePanel({ currentUrl, onSaved }: Props) {
   const { t } = useTranslation();
   const canvasRef     = useRef<HTMLCanvasElement>(null);
   const padRef        = useRef<SignaturePad | null>(null);
@@ -78,7 +77,7 @@ export default function SignaturePanel({ currentUrl, sessionToken, onSaved }: Pr
 
   const uploadToServer = useCallback(async (base64: string, fileName: string, mimeType: string) => {
     const { data: { session } } = await supabase.auth.getSession();
-    const token = session?.access_token || sessionToken;
+    const token = session?.access_token;
     const r = await fetch("/api/auth/upload-signature", {
       method: "POST",
       headers: {
@@ -92,7 +91,7 @@ export default function SignaturePanel({ currentUrl, sessionToken, onSaved }: Pr
       throw new Error(err.error || "Upload failed");
     }
     return (await r.json()) as { url: string };
-  }, [sessionToken]);
+  }, []);
 
   const handleSaveDraw = async () => {
     if (!padRef.current || padRef.current.isEmpty()) return;
@@ -139,7 +138,7 @@ export default function SignaturePanel({ currentUrl, sessionToken, onSaved }: Pr
     setMsg(null);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const token = session?.access_token || sessionToken;
+      const token = session?.access_token;
       const r = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: {

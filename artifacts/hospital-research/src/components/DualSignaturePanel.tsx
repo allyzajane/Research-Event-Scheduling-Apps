@@ -105,7 +105,6 @@ interface SlotProps {
   icon:        React.ElementType;
   sigUrl:      string | null | undefined;
   isActive:    boolean;
-  sessionToken:string;
   sigType:     "uploaded" | "drawn";
   targetPath:  string; // /auth/upload-signature or /admin/users/:id/upload-signature
   patchPath:   string; // /auth/me or /admin/users/:id/signatures
@@ -115,7 +114,7 @@ interface SlotProps {
 
 function SignatureSlot({
   label, hint, icon: Icon, sigUrl, isActive,
-  sessionToken, sigType, targetPath, patchPath,
+  sigType, targetPath, patchPath,
   onSaved, onSetActive,
 }: SlotProps) {
   const { t } = useTranslation();
@@ -167,9 +166,11 @@ function SignatureSlot({
   const uploadData = async (base64: string, mimeType: string) => {
     setSaving(true); setMsg(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const r = await fetch(targetPath, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sessionToken}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify({ file_base64: base64, file_name: `signature.${mimeType.split("/")[1] || "png"}`, mime_type: mimeType, sig_type: sigType }),
       });
       if (!r.ok) {
@@ -196,12 +197,14 @@ function SignatureSlot({
   const handleDelete = async () => {
     setDeleting(true); setMsg(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token;
       const body = sigType === "uploaded"
         ? (patchPath.includes("/admin/") ? { remove_uploaded: true } : { signature_url: null })
         : (patchPath.includes("/admin/") ? { remove_drawn: true } : { signature_drawn_url: null });
       const r = await fetch(patchPath, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sessionToken}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify(body),
       });
       if (!r.ok) throw new Error("Delete failed");
