@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from "react";
 import { Link, useLocation } from "wouter";
 import { useTranslation } from "react-i18next";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/contexts/AuthContext";
 import type { AuthUser } from "@/contexts/AuthContext";
 import { applyDirection } from "@/i18n/index";
@@ -9,7 +10,7 @@ import { useGetLandingPage, useGetThemeSettings } from "@workspace/api-client-re
 import {
   LayoutDashboard, Users, FileText, BookOpen, Calendar,
   Settings, User, LogOut, Menu, ChevronRight, Hospital,
-  Megaphone, MoreVertical,
+  Megaphone, MoreVertical, Moon, Sun,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { EventInviteToast } from "@/components/EventInviteToast";
@@ -239,6 +240,7 @@ function SidebarContent({
 export function AppLayout({ children }: { children: React.ReactNode }) {
   const { t } = useTranslation();
   const { user, signOut } = useAuth();
+  const { resolvedTheme, setTheme } = useTheme();
   const [location, navigate] = useLocation();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [astClock, setAstClock] = useState(getASTClock);
@@ -335,6 +337,17 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
               </span>
             </div>
             <NotificationBell />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+              aria-label="Toggle dark mode"
+            >
+              {resolvedTheme === "dark"
+                ? <Sun className="w-4 h-4" />
+                : <Moon className="w-4 h-4" />}
+            </Button>
             <Button variant="outline" size="sm" onClick={toggleLang} className="text-xs font-semibold px-3 h-8">
               {i18n.language === "ar" ? "EN" : "عر"}
             </Button>

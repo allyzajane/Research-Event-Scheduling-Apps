@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from "react";
 import { Switch, Route, Router as WouterRouter } from "wouter";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { ThemeProvider, useTheme } from "next-themes";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider } from "@/contexts/AuthContext";
@@ -11,12 +12,14 @@ import "@/i18n/index";
 import { useGetThemeSettings } from "@workspace/api-client-react";
 import { applyPrimaryColor } from "@/lib/theme";
 
-// Reads saved primary color from DB once and wires it to CSS variables
+// Re-applies the saved primary color whenever the resolved theme (light/dark) changes,
+// so the brand color always wins over the default dark-mode CSS values.
 function ThemeApplier() {
   const { data: theme } = useGetThemeSettings();
+  const { resolvedTheme } = useTheme();
   useEffect(() => {
     if (theme?.primary_color) applyPrimaryColor(theme.primary_color);
-  }, [theme?.primary_color]);
+  }, [theme?.primary_color, resolvedTheme]);
   return null;
 }
 
@@ -118,15 +121,17 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <AuthProvider>
-          <ThemeApplier />
-          <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
-            <Router />
-          </WouterRouter>
-          <Toaster />
-        </AuthProvider>
-      </TooltipProvider>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem disableTransitionOnChange>
+        <TooltipProvider>
+          <AuthProvider>
+            <ThemeApplier />
+            <WouterRouter base={import.meta.env.BASE_URL.replace(/\/$/, "")}>
+              <Router />
+            </WouterRouter>
+            <Toaster />
+          </AuthProvider>
+        </TooltipProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }
