@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -78,20 +78,10 @@ export default function AttendancePage() {
   const [loading,      setLoading]      = useState(true);
   const [selectedForm, setSelectedForm] = useState<string>("");
   const [loadErr,      setLoadErr]      = useState<string | null>(null);
-  const loadSeqRef = useRef(0);
-
-  useEffect(() => {
-    setForms([]);
-    setSelectedForm("");
-    setLoadErr(null);
-  }, []);
 
   const fetchForms = useCallback(async () => {
-    const seq = ++loadSeqRef.current;
     setLoading(true);
     setLoadErr(null);
-    setForms([]);
-    setSelectedForm("");
     try {
       const token = await getToken();
       const r = await fetch(`/api/calendar/events`, {
@@ -99,18 +89,17 @@ export default function AttendancePage() {
       });
       if (!r.ok) throw new Error();
       const events = (await r.json()) as AttendanceEvent[];
-      if (seq !== loadSeqRef.current) return;
       const visible = isAdminRole ? events : events.filter(ev => (ev.participants ?? []).includes(user?.id ?? ""));
       visible.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       setForms(visible.map((ev, index) => ({ ...ev, meeting_no: index + 1 })));
-      setSelectedForm(visible[0]?.id ?? "");
+      setSelectedForm(prev => {
+        if (prev && visible.some(f => f.id === prev)) return prev;
+        return visible[0]?.id ?? "";
+      });
     } catch {
-      if (seq !== loadSeqRef.current) return;
       setForms([]);
-      setSelectedForm("");
       setLoadErr(t("common.error") || "Failed to load events");
     } finally {
-      if (seq !== loadSeqRef.current) return;
       setLoading(false);
     }
   }, [isAdminRole, t, user?.id]);
@@ -135,7 +124,7 @@ export default function AttendancePage() {
 
   if (selectedForm) {
     return (
-      <div className="p-4 sm:p-6 w-full max-w-5xl mx-auto">
+      <div className="p-6 max-w-2xl mx-auto">
         <AttendanceForm
           formId={selectedForm}
           formOptions={forms}
@@ -148,7 +137,7 @@ export default function AttendancePage() {
   // ── List view ────────────────────────────────────────────────────────────
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 w-full max-w-6xl mx-auto">
+    <div className="p-6 space-y-6 max-w-4xl mx-auto">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap">
