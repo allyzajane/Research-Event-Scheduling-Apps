@@ -132,7 +132,7 @@ export default function SettingsPage() {
       const draft: Record<Role, string[]> = { admin: [], ceo: [], director: [], doctor: [], nurse: [], staff: [] };
       for (const cfg of allConfigs.configs) {
         if (ALL_ROLES.includes(cfg.role as Role)) {
-          draft[cfg.role as Role] = cfg.widgets;
+          draft[cfg.role as Role] = cfg.widgets.filter(widget => ALL_WIDGETS.includes(widget as (typeof ALL_WIDGETS)[number]));
         }
       }
       setWidgetDraft(draft);
@@ -213,11 +213,16 @@ export default function SettingsPage() {
     setSavingRole(role);
     setWidgetMsg(null);
     try {
-      await updateRoleConfig.mutateAsync({ role, data: { widgets: widgetDraft[role] } });
+      const widgets = widgetDraft[role].filter(widget => ALL_WIDGETS.includes(widget as (typeof ALL_WIDGETS)[number]));
+      await updateRoleConfig.mutateAsync({ role, data: { widgets } });
       qc.invalidateQueries({ queryKey: getGetAllDashboardConfigsQueryKey() });
       setWidgetMsg({ role, ok: true, text: t("settings.widgetsSaved") });
-    } catch {
-      setWidgetMsg({ role, ok: false, text: t("settings.widgetsSaveFailed") });
+    } catch (err) {
+      setWidgetMsg({
+        role,
+        ok: false,
+        text: `${t("settings.widgetsSaveFailed")}${err instanceof Error && err.message ? `: ${err.message}` : ""}`,
+      });
     } finally {
       setSavingRole(null);
     }
