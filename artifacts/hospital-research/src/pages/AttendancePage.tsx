@@ -127,7 +127,6 @@ export default function AttendancePage() {
       <div className="p-6 max-w-2xl mx-auto">
         <AttendanceForm
           formId={selectedForm}
-          onBack={() => { setSelectedForm(""); fetchForms(); }}
           formOptions={forms}
           onSelectForm={setSelectedForm}
         />
