@@ -181,6 +181,7 @@
       "byRole": "Users by Role"
     },
     "cannotDeleteSelf": "You cannot delete your own account",
+    "lastSeen": "Last Seen",
     "noUsers": "No users found",
     "searchPlaceholder": "Search by name or email..."
   },

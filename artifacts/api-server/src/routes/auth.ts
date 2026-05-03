@@ -70,12 +70,12 @@ router.get("/auth/me", requireAuth, async (req, res) => {
       .single();
 
     if (!fetchErr && existing) {
-      if (existing.role !== userRole) {
-        await supabaseAdmin.from("profiles").update({ role: userRole }).eq("id", userId);
-        res.json({ ...existing, role: userRole });
-      } else {
-        res.json(existing);
-      }
+      // Fire-and-forget: stamp last_seen_at (and sync role if it drifted)
+      const touch: Record<string, unknown> = { last_seen_at: new Date().toISOString() };
+      if (existing.role !== userRole) touch.role = userRole;
+      void supabaseAdmin.from("profiles").update(touch).eq("id", userId);
+
+      res.json({ ...existing, ...touch, role: userRole });
       return;
     }
 

@@ -15,8 +15,9 @@ import i18n from "i18next";
 import {
   UserPlus, Search, Pencil, Trash2, MoreHorizontal, Users, KeyRound,
   CheckCircle2, AlertCircle, Eye, EyeOff, RefreshCw, Copy, Check,
-  ShieldCheck, PenLine, Shield,
+  ShieldCheck, PenLine, Shield, Clock,
 } from "lucide-react";
+import { timeAgoAST } from "@/lib/ast";
 import AdminSignatureDialog from "@/components/AdminSignatureDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -30,6 +31,16 @@ import { Switch } from "@/components/ui/switch";
 import { Skeleton } from "@/components/ui/skeleton";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { cn } from "@/lib/utils";
+
+// Presence status helper — derives online indicator from last_seen_at
+function getPresence(lastSeen: string | null | undefined, isAr: boolean) {
+  if (!lastSeen) return { dot: "bg-gray-300 dark:bg-gray-600", pulse: false, label: isAr ? "غير معروف" : "Never" };
+  const mins = (Date.now() - new Date(lastSeen).getTime()) / 60_000;
+  if (mins < 3)  return { dot: "bg-emerald-500", pulse: true,  label: isAr ? "متصل الآن" : "Online" };
+  if (mins < 15) return { dot: "bg-amber-400",   pulse: false, label: timeAgoAST(lastSeen, isAr) };
+  if (mins < 60) return { dot: "bg-blue-400",    pulse: false, label: timeAgoAST(lastSeen, isAr) };
+  return           { dot: "bg-gray-400 dark:bg-gray-500", pulse: false, label: timeAgoAST(lastSeen, isAr) };
+}
 
 // Helpers — resolve role display info from the API roles list
 type RoleData = { id: string; name: string; label: string; label_ar?: string | null; color: string; is_system: boolean; user_count: number; created_at: string; };
@@ -284,7 +295,7 @@ export default function UsersPage() {
           <table className="w-full">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
-                {[t("common.name"), t("common.email"), t("common.role"), t("common.department"), t("common.status"), t("common.actions")].map(h => (
+                {[t("common.name"), t("common.email"), t("common.role"), t("common.department"), t("common.status"), t("users.lastSeen"), t("common.actions")].map(h => (
                   <th key={h} className="text-xs font-semibold text-muted-foreground uppercase tracking-wide px-4 py-3 text-start">{h}</th>
                 ))}
               </tr>
@@ -292,7 +303,7 @@ export default function UsersPage() {
             <tbody className="divide-y divide-border">
               {isLoading ? (
                 [...Array(5)].map((_, i) => (
-                  <tr key={i}><td colSpan={6} className="px-4 py-3"><Skeleton className="h-5 w-full" /></td></tr>
+                  <tr key={i}><td colSpan={7} className="px-4 py-3"><Skeleton className="h-5 w-full" /></td></tr>
                 ))
               ) : users?.length ? (
                 users.map(user => (
@@ -319,6 +330,18 @@ export default function UsersPage() {
                       <Badge variant={user.is_active ? "default" : "secondary"} className="text-xs">
                         {user.is_active ? t("common.active") : t("common.inactive")}
                       </Badge>
+                    </td>
+                    <td className="px-4 py-3">
+                      {(() => {
+                        const lastSeen = (user as unknown as Record<string, unknown>).last_seen_at as string | null | undefined;
+                        const p = getPresence(lastSeen, isAr);
+                        return (
+                          <div className="flex items-center gap-2 min-w-[90px]">
+                            <span className={cn("w-2 h-2 rounded-full flex-shrink-0", p.dot, p.pulse && "animate-pulse")} />
+                            <span className="text-xs text-muted-foreground tabular-nums">{p.label}</span>
+                          </div>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-0.5">
@@ -374,7 +397,7 @@ export default function UsersPage() {
                   </tr>
                 ))
               ) : (
-                <tr><td colSpan={6} className="py-16 text-center text-muted-foreground">
+                <tr><td colSpan={7} className="py-16 text-center text-muted-foreground">
                   <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
                   <p>{t("users.noUsers")}</p>
                 </td></tr>

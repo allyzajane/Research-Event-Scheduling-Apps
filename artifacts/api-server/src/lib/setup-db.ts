@@ -162,6 +162,12 @@ alter table public.calendar_events
   add column if not exists participants    jsonb    not null default '[]'::jsonb,
   add column if not exists event_status    text     not null default 'active';
 
+alter table public.profiles
+  add column if not exists signature_url         text,
+  add column if not exists signature_drawn_url   text,
+  add column if not exists signature_active_type text default 'uploaded',
+  add column if not exists last_seen_at          timestamptz;
+
 alter table public.calendar_events enable row level security;
 drop policy if exists "calendar_events_all" on public.calendar_events;
 create policy "calendar_events_all" on public.calendar_events using (true) with check (true);

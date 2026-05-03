@@ -573,6 +573,7 @@ alter table public.calendar_events
   add column if not exists title_ar       text;
 
 alter table public.profiles
-  add column if not exists signature_url       text,
-  add column if not exists signature_drawn_url text,
-  add column if not exists signature_active_type text default 'uploaded';
+  add column if not exists signature_url         text,
+  add column if not exists signature_drawn_url   text,
+  add column if not exists signature_active_type text default 'uploaded',
+  add column if not exists last_seen_at          timestamptz;
