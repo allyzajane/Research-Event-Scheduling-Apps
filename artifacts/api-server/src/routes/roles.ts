@@ -37,8 +37,8 @@ router.get("/roles", requireAuth, async (req, res) => {
 
 // ─── POST /roles — create new role (admin only) ───────────────────────────
 router.post("/roles", requireAuth, requireRole("admin"), async (req, res) => {
-  const { name, label, label_ar, color = "gray" } = req.body as {
-    name: string; label: string; label_ar?: string; color?: string;
+  const { name, label, color = "gray" } = req.body as {
+    name: string; label: string; color?: string;
   };
 
   if (!name || !label) {
@@ -57,7 +57,7 @@ router.post("/roles", requireAuth, requireRole("admin"), async (req, res) => {
   try {
     const { data, error } = await supabaseAdmin
       .from("roles")
-      .insert({ name, label, label_ar: label_ar || null, color, is_system: false })
+      .insert({ name, label, color, is_system: false })
       .select()
       .single();
 
@@ -81,8 +81,8 @@ router.post("/roles", requireAuth, requireRole("admin"), async (req, res) => {
 // ─── PATCH /roles/:id — update label/label_ar/color (admin, non-system) ──
 router.patch("/roles/:id", requireAuth, requireRole("admin"), async (req, res) => {
   const id = String(req.params.id);
-  const { label, label_ar, color } = req.body as {
-    label?: string; label_ar?: string | null; color?: string;
+  const { label, color } = req.body as {
+    label?: string; color?: string;
   };
 
   try {
@@ -93,8 +93,7 @@ router.patch("/roles/:id", requireAuth, requireRole("admin"), async (req, res) =
     if (existing.is_system) { res.status(403).json({ error: "System roles cannot be modified" }); return; }
 
     const updates: Record<string, unknown> = {};
-    if (label !== undefined)    updates.label    = label;
-    if (label_ar !== undefined) updates.label_ar = label_ar || null;
+    if (label !== undefined) updates.label = label;
     if (color !== undefined) {
       if (!VALID_COLORS.includes(color)) { res.status(400).json({ error: "Invalid color" }); return; }
       updates.color = color;

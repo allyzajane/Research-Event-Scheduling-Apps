@@ -445,7 +445,6 @@ create table if not exists public.roles (
   name         text not null unique
                check (name ~ '^[a-z][a-z0-9_]*$' and length(name) >= 2),
   label        text not null,
-  label_ar     text,
   color        text not null default 'gray'
                check (color in ('teal','purple','indigo','blue','pink','gray','orange','red','emerald','amber','cyan','violet')),
   is_system    boolean not null default false,
@@ -453,13 +452,13 @@ create table if not exists public.roles (
 );
 
 -- Seed the six built-in system roles
-insert into public.roles (name, label, label_ar, color, is_system) values
-  ('admin',    'Administrator',  'مدير النظام',         'teal',   true),
-  ('ceo',      'CEO',            'الرئيس التنفيذي',     'purple', true),
-  ('director', 'Director',       'المدير',              'indigo', true),
-  ('doctor',   'Doctor',         'طبيب',                'blue',   true),
-  ('nurse',    'Nurse',          'ممرض/ة',              'pink',   true),
-  ('staff',    'Staff',          'موظف',                'gray',   true)
+insert into public.roles (name, label, color, is_system) values
+  ('admin',    'Administrator', 'teal',   true),
+  ('ceo',      'CEO',           'purple', true),
+  ('director', 'Director',      'indigo', true),
+  ('doctor',   'Doctor',        'blue',   true),
+  ('nurse',    'Nurse',         'pink',   true),
+  ('staff',    'Staff',         'gray',   true)
 on conflict (name) do nothing;
 
 alter table public.roles enable row level security;
