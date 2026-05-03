@@ -4,6 +4,7 @@ import SignaturePad from "signature_pad";
 import { PenLine, Upload, Trash2, Save, RotateCcw, CheckCircle2, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 interface Props {
   currentUrl: string | null | undefined;
@@ -76,11 +77,13 @@ export default function SignaturePanel({ currentUrl, sessionToken, onSaved }: Pr
   };
 
   const uploadToServer = useCallback(async (base64: string, fileName: string, mimeType: string) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    const token = session?.access_token || sessionToken;
     const r = await fetch("/api/auth/upload-signature", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${sessionToken}`,
+        "Authorization": `Bearer ${token}`,
       },
       body: JSON.stringify({ file_base64: base64, file_name: fileName, mime_type: mimeType }),
     });
@@ -135,11 +138,13 @@ export default function SignaturePanel({ currentUrl, sessionToken, onSaved }: Pr
     setSaving(true);
     setMsg(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || sessionToken;
       const r = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${sessionToken}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ signature_url: null }),
       });

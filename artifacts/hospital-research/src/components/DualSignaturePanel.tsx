@@ -8,6 +8,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 // ─── Types ────────────────────────────────────────────────────────────────
 
@@ -378,11 +379,13 @@ export default function DualSignaturePanel({ uploadedUrl, drawnUrl, activeType, 
   const setActive = async (type: "uploaded" | "drawn") => {
     setSettingActive(true); setActiveMsg(null);
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const token = session?.access_token || sessionToken;
       const patchPath = targetUserId ? `/api/admin/users/${targetUserId}/signatures` : "/api/auth/me";
       const body      = targetUserId ? { signature_active_type: type } : { signature_active_type: type };
       const r = await fetch(patchPath, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${sessionToken}` },
+        headers: { "Content-Type": "application/json", "Authorization": `Bearer ${token}` },
         body: JSON.stringify(body),
       });
       if (!r.ok) throw new Error("Failed");

@@ -13,6 +13,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import DualSignaturePanel from "@/components/DualSignaturePanel";
 import { cn } from "@/lib/utils";
+import { supabase } from "@/lib/supabase";
 
 const roleColors: Record<string, string> = {
   admin:    "bg-teal-100 text-teal-800 dark:bg-teal-900 dark:text-teal-200",
@@ -77,6 +78,8 @@ export default function ProfilePage() {
     setUploadingAvatar(true);
     setMsg(null);
     try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const token = currentSession?.access_token || session.access_token;
       const base64 = await new Promise<string>((res, rej) => {
         const reader = new FileReader();
         reader.onload = () => res((reader.result as string).split(",")[1]);
@@ -88,7 +91,7 @@ export default function ProfilePage() {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({ file_base64: base64, file_name: file.name, mime_type: file.type }),
       });
@@ -115,11 +118,13 @@ export default function ProfilePage() {
     setSaving(true);
     setMsg(null);
     try {
+      const { data: { session: currentSession } } = await supabase.auth.getSession();
+      const token = currentSession?.access_token || session.access_token;
       const r = await fetch("/api/auth/me", {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${session.access_token}`,
+          "Authorization": `Bearer ${token}`,
         },
         body: JSON.stringify({
           full_name:    form.full_name    || null,
