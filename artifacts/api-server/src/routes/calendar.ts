@@ -127,6 +127,12 @@ function shapeEvent(e: Record<string, unknown>) {
   };
 }
 
+function isVisibleToUser(e: Record<string, unknown>, userId: string, admin: boolean) {
+  if (admin) return true;
+  const participants = Array.isArray(e.participants) ? e.participants : [];
+  return participants.includes(userId);
+}
+
 // ── Extract missing column name from PGRST204 error ────────────────────────────
 function missingColumn(errMsg: string): string | null {
   const m = errMsg.match(/Could not find the '(\w+)' column/);
@@ -203,13 +209,7 @@ router.get("/calendar/events", requireAuth, async (req, res) => {
 
     const events = (data || []).map(e => shapeEvent(e as Record<string, unknown>));
 
-    // Admins see all events; non-admins see only events they were added to as a participant
-    const visible = admin
-      ? events
-      : events.filter(ev =>
-          (ev.participants as string[]).includes(userId) ||
-          ev.created_by === userId,
-        );
+    const visible = events.filter(ev => isVisibleToUser(ev as Record<string, unknown>, userId, admin));
 
     res.json(visible);
   } catch (err) {
@@ -289,13 +289,7 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
 
     const events = (data || []).map(e => shapeEvent(e as Record<string, unknown>));
 
-    // Admins see all upcoming; non-admins see only their events
-    const visible = admin
-      ? events
-      : events.filter(ev =>
-          (ev.participants as string[]).includes(userId) ||
-          ev.created_by === userId,
-        );
+    const visible = events.filter(ev => isVisibleToUser(ev as Record<string, unknown>, userId, admin));
 
     res.json(visible.slice(0, 10));
   } catch (err) {

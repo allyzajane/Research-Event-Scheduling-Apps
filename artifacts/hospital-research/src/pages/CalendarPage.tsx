@@ -496,7 +496,7 @@ function EventContent({ event, events }: { event: { id: string; title: string };
 
 export default function CalendarPage() {
   const { t } = useTranslation();
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const qc = useQueryClient();
   const calRef = useRef<FullCalendar>(null);
 
@@ -522,17 +522,23 @@ export default function CalendarPage() {
   const invalidate = () => qc.invalidateQueries({ queryKey: getListEventsQueryKey() });
 
   const isAr = i18n.language === "ar";
+  const currentUserId = user?.id ?? "";
+  const visibleEvents = useMemo(() => {
+    if (!currentUserId) return [];
+    if (isAdmin) return events;
+    return events.filter(ev => Array.isArray(ev.participants) && ev.participants.includes(currentUserId));
+  }, [events, isAdmin, currentUserId]);
 
   // Filtered events for sidebar
   const filteredEvents = useMemo(() => {
-    return events.filter(ev => {
+    return visibleEvents.filter(ev => {
       if (filterStatus === "all") return true;
       return getPinStatus(ev) === filterStatus;
     });
-  }, [events, filterStatus]);
+  }, [visibleEvents, filterStatus]);
 
   // FC events — use pin color for each event's dot
-  const fcEvents = useMemo(() => events.map(e => {
+  const fcEvents = useMemo(() => visibleEvents.map(e => {
     const pinStatus = getPinStatus(e);
     const color = PIN_COLORS[pinStatus];
     return {
@@ -546,7 +552,7 @@ export default function CalendarPage() {
       textColor: "#fff",
       extendedProps: { event_type: e.event_type, pinStatus },
     };
-  }), [events, isAr]);
+  }), [visibleEvents, isAr]);
 
   const handleDateClick = (info: DateClickArg) => {
     if (!isAdmin) return;
@@ -556,7 +562,7 @@ export default function CalendarPage() {
 
   const handleEventClick = (info: EventClickArg) => {
     if (!isAdmin) return;
-    const ev = events.find(e => e.id === info.event.id);
+    const ev = visibleEvents.find(e => e.id === info.event.id);
     if (!ev) return;
     setEditEvent({ id: ev.id, form: eventToForm(ev) });
   };
@@ -632,7 +638,7 @@ export default function CalendarPage() {
     const c: Record<string, number> = { all: events.length, present: 0, past: 0, canceled: 0, rescheduled: 0 };
     events.forEach(ev => { c[getPinStatus(ev)] = (c[getPinStatus(ev)] || 0) + 1; });
     return c;
-  }, [events]);
+  }, [visibleEvents]);
 
   // ── PDF export ───────────────────────────────────────────────────────────────
   const handleExportPDF = async () => {
