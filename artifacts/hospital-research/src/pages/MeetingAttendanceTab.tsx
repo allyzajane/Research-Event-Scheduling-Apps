@@ -5,8 +5,8 @@ import { useAuth } from "@/contexts/AuthContext";
 import i18n from "i18next";
 import {
   Plus, Power, PowerOff, Trash2, Edit2, Users,
-  Clock, CheckCircle2, XCircle, AlertCircle, ChevronDown, ChevronUp,
-  FileText, Save, X,
+  Clock, CheckCircle2, XCircle, ChevronRight, ArrowLeft,
+  FileText, Save, X, CalendarDays, MapPin,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +45,7 @@ interface MeetingForm {
   window_start?: string | null; window_end?: string | null;
   event_id?: string | null; calendar_events?: CalEvent | null;
   created_at: string; updated_at: string;
+  my_submission?: Submission | null;
 }
 
 interface UserProfile {
@@ -97,7 +98,7 @@ function fmtCountdown(ms: number): string {
 }
 type GateState = "unavailable" | "pending" | "open" | "closed" | "submitted";
 
-function getGate(f: MeetingFormDetail, now: number): GateState {
+function getGate(f: MeetingForm | MeetingFormDetail, now: number): GateState {
   if (f.my_submission) return "submitted";
   if (!f.is_active) return "unavailable";
   const ws = f.window_start ? new Date(f.window_start).getTime() : null;
@@ -515,7 +516,15 @@ export default function MeetingAttendanceTab() {
                 <label className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                   {t("meetingForm.selectEvent")}
                 </label>
-                <Select value={createEventId} onValueChange={setCreateEventId}>
+                <Select
+                  value={createEventId}
+                  onValueChange={v => {
+                    setCreateEventId(v);
+                    const ev = calEvents.find(e => e.id === v);
+                    if (ev?.start_time) setCreateWinStart(toInputDateTimeAST(ev.start_time));
+                    if (ev?.end_time)   setCreateWinEnd(toInputDateTimeAST(ev.end_time));
+                  }}
+                >
                   <SelectTrigger><SelectValue placeholder={t("meetingForm.selectEvent")} /></SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__none__">{t("meetingForm.noEvent")}</SelectItem>
@@ -527,6 +536,26 @@ export default function MeetingAttendanceTab() {
                     ))}
                   </SelectContent>
                 </Select>
+                {createEventId && createEventId !== "__none__" && (() => {
+                  const ev = calEvents.find(e => e.id === createEventId);
+                  if (!ev) return null;
+                  return (
+                    <div className="rounded-lg border border-border bg-muted/40 p-3 space-y-1 text-xs text-muted-foreground">
+                      {ev.start_time && (
+                        <div className="flex items-center gap-2">
+                          <CalendarDays className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{fmtEventDate(ev.start_time, ev.end_time, locale)} · {fmtEventTime(ev.start_time, ev.end_time, locale)}</span>
+                        </div>
+                      )}
+                      {(ev.venue || ev.location) && (
+                        <div className="flex items-center gap-2">
+                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{ev.venue || ev.location}</span>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })()}
               </div>
 
               {/* Window start */}
@@ -577,40 +606,111 @@ export default function MeetingAttendanceTab() {
   }
 
   // ─── Staff view ─────────────────────────────────────────────────────────────
-  return (
-    <div className="space-y-4 max-w-2xl">
-      {/* Form selector (if multiple active forms) */}
-      {forms.length > 1 && (
-        <Select value={selectedId ?? "__none__"} onValueChange={v => setSelectedId(v === "__none__" ? null : v)}>
-          <SelectTrigger className="w-full h-9">
-            <SelectValue placeholder={t("meetingForm.selectFormPlaceholder")} />
-          </SelectTrigger>
-          <SelectContent>
+
+  // List view — no form selected yet
+  if (!selectedId) {
+    return (
+      <div className="space-y-4 max-w-2xl">
+        {loadingForms ? (
+          <div className="space-y-3">{[1, 2].map(i => <Skeleton key={i} className="h-28 w-full rounded-xl" />)}</div>
+        ) : forms.length === 0 ? (
+          <Card className="shadow-sm">
+            <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
+              <FileText className="w-10 h-10 opacity-25 mb-3" />
+              <p className="text-sm font-medium">{t("meetingForm.noActiveForms")}</p>
+            </CardContent>
+          </Card>
+        ) : (
+          <div className="space-y-3">
             {forms.map(f => {
               const title = isAr && f.calendar_events?.title_ar
-                ? f.calendar_events.title_ar : (f.calendar_events?.title ?? t("meetingForm.noEvent"));
+                ? f.calendar_events.title_ar
+                : (f.calendar_events?.title ?? t("meetingForm.noEvent"));
+              const ev = f.calendar_events;
+              const cardGate = getGate(f, liveNow);
+
+              const gateBadge: Record<GateState, { label: string; cls: string }> = {
+                open:        { label: t("meetingForm.gateOpen"),        cls: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/50 dark:text-emerald-300" },
+                pending:     { label: t("meetingForm.gatePendingShort"), cls: "bg-amber-100 text-amber-800 dark:bg-amber-900/50 dark:text-amber-300" },
+                closed:      { label: t("meetingForm.gateClosed"),       cls: "bg-red-100 text-red-800 dark:bg-red-900/50 dark:text-red-300" },
+                submitted:   { label: t("meetingForm.gateSubmitted"),    cls: "bg-primary/10 text-primary" },
+                unavailable: { label: t("meetingForm.gateUnavailableShort"), cls: "bg-muted text-muted-foreground" },
+              };
+              const badge = gateBadge[cardGate];
+
               return (
-                <SelectItem key={f.id} value={f.id}>
-                  #{String(f.meeting_no).padStart(3, "0")} · {title}
-                </SelectItem>
+                <button
+                  key={f.id}
+                  className="w-full text-start"
+                  onClick={() => setSelectedId(f.id)}
+                  disabled={cardGate === "unavailable"}
+                >
+                  <Card className={cn(
+                    "shadow-sm transition-shadow hover:shadow-md cursor-pointer",
+                    cardGate === "open"        && "border-emerald-400/50",
+                    cardGate === "submitted"   && "border-primary/30 bg-primary/5",
+                    cardGate === "unavailable" && "opacity-50 cursor-not-allowed",
+                  )}>
+                    <CardContent className="p-4 flex items-center gap-4">
+                      {/* Meeting No */}
+                      <div className="flex-shrink-0 w-14 h-14 rounded-xl bg-primary/10 flex items-center justify-center">
+                        <span className="text-base font-black text-primary tabular-nums">
+                          {String(f.meeting_no).padStart(3, "0")}
+                        </span>
+                      </div>
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="font-semibold text-foreground text-sm leading-snug">{title}</p>
+                          <Badge className={cn("text-[10px] px-2", badge.cls)}>{badge.label}</Badge>
+                        </div>
+                        {ev?.start_time && (
+                          <div className="flex items-center gap-1.5 mt-1 text-xs text-muted-foreground">
+                            <CalendarDays className="w-3 h-3 flex-shrink-0" />
+                            <span>{fmtEventDate(ev.start_time, ev.end_time, locale)}</span>
+                            <span>·</span>
+                            <span>{fmtEventTime(ev.start_time, ev.end_time, locale)}</span>
+                          </div>
+                        )}
+                        {(ev?.venue || ev?.location) && (
+                          <div className="flex items-center gap-1.5 mt-0.5 text-xs text-muted-foreground">
+                            <MapPin className="w-3 h-3 flex-shrink-0" />
+                            <span className="truncate">{ev.venue || ev.location}</span>
+                          </div>
+                        )}
+                        {cardGate === "submitted" && f.my_submission && (
+                          <p className="text-xs text-primary font-medium mt-1">
+                            {t("meetingForm.attendeeNo")} #{f.my_submission.submission_no}
+                          </p>
+                        )}
+                      </div>
+
+                      {/* Arrow */}
+                      <ChevronRight className={cn(
+                        "w-4 h-4 flex-shrink-0",
+                        cardGate === "unavailable" ? "text-muted-foreground/30" : "text-muted-foreground"
+                      )} />
+                    </CardContent>
+                  </Card>
+                </button>
               );
             })}
-          </SelectContent>
-        </Select>
-      )}
+          </div>
+        )}
+      </div>
+    );
+  }
 
-      {/* No active forms */}
-      {!loadingForms && forms.length === 0 && (
-        <Card className="shadow-sm">
-          <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
-            <FileText className="w-10 h-10 opacity-25 mb-3" />
-            <p className="text-sm font-medium">{t("meetingForm.noActiveForms")}</p>
-          </CardContent>
-        </Card>
-      )}
+  return (
+    <div className="space-y-4 max-w-2xl">
+      {/* Back button */}
+      <Button variant="ghost" size="sm" className="gap-1.5 -ms-1" onClick={() => setSelectedId(null)}>
+        <ArrowLeft className="w-4 h-4" /> {t("meetingForm.backToList")}
+      </Button>
 
       {/* Loading */}
-      {(loadingForms || loadingDetail) && (
+      {loadingDetail && (
         <div className="space-y-3">
           <Skeleton className="h-8 w-full" />
           <Skeleton className="h-64 w-full rounded-xl" />

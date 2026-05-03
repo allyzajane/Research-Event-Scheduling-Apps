@@ -42,7 +42,26 @@ router.get("/meeting-forms", requireAuth, async (req, res) => {
       req.log.warn({ err: error }, "meeting_attendance_forms table may not exist");
       res.json([]); return;
     }
-    res.json(data ?? []);
+
+    const forms = data ?? [];
+
+    if (!isAdmin && forms.length > 0) {
+      const formIds = (forms as any[]).map((f: any) => f.id);
+      const { data: subs } = await supabaseAdmin
+        .from("meeting_attendance_submissions")
+        .select("id, form_id, submission_no, submitted_at")
+        .eq("user_id", reqUser.id)
+        .in("form_id", formIds);
+
+      const subMap = new Map((subs ?? []).map((s: any) => [s.form_id, s]));
+      res.json((forms as any[]).map((f: any) => ({
+        ...f,
+        my_submission: subMap.get(f.id) ?? null,
+      })));
+      return;
+    }
+
+    res.json(forms);
   } catch (err) {
     req.log.error({ err }, "Failed to list meeting forms");
     res.json([]);
