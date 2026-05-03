@@ -468,3 +468,39 @@ do $$ begin
     create policy "public_read_roles" on public.roles for select using (true);
   end if;
 end $$;
+
+-- ─────────────────────────────────────────────────────────────
+-- Section 17: Attendance table
+-- Run this in Supabase SQL editor to enable the Attendance page.
+-- ─────────────────────────────────────────────────────────────
+create table if not exists public.attendance (
+  id         uuid        primary key default gen_random_uuid(),
+  user_id    uuid        not null references public.profiles(id) on delete cascade,
+  date       date        not null,
+  clock_in   timestamptz not null,
+  clock_out  timestamptz,
+  status     text        not null default 'present'
+             check (status in ('present', 'late', 'half_day', 'absent')),
+  notes      text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
+  unique(user_id, date)
+);
+
+create index if not exists attendance_user_id_idx on public.attendance(user_id);
+create index if not exists attendance_date_idx    on public.attendance(date desc);
+
+alter table public.attendance enable row level security;
+
+do $$ begin
+  if not exists (select 1 from pg_policies where policyname = 'attendance_select' and tablename = 'attendance') then
+    create policy "attendance_select" on public.attendance
+      for select using (
+        auth.uid() = user_id
+        or exists (
+          select 1 from public.profiles p
+          where p.id = auth.uid() and p.role in ('admin', 'ceo', 'director')
+        )
+      );
+  end if;
+end $$;
