@@ -12,6 +12,8 @@ import notificationsRouter from "./notifications";
 import roleDashboardRouter from "./roleDashboard";
 import adminSignaturesRouter from "./adminSignatures";
 import rolesRouter from "./roles";
+import meetingFormsRouter from "./meetingForms";
+import attendanceRouter from "./attendance";
 const router: IRouter = Router();
 
 router.use(healthRouter);
@@ -27,5 +29,7 @@ router.use(settingsRouter);
 router.use(dashboardRouter);
 router.use(notificationsRouter);
 router.use(roleDashboardRouter);
+router.use(meetingFormsRouter);
+router.use(attendanceRouter);
 
 export default router;
