@@ -20,33 +20,16 @@ interface CalendarEvent {
   id: string;
   title: string;
   title_ar?: string;
+  meeting_no?: number;
   venue?: string;
   location?: string;
   start_time: string;
   end_time?: string;
-  event_type?: string;
-  organizer?: string;
-}
-
-interface MeetingForm {
-  id: string;
-  meeting_no: number;
-  title: string;
-  title_ar?: string;
-  start_time: string;
-  end_time?: string;
-  venue?: string;
-  location?: string;
   event_type?: string;
   organizer?: string;
   participants?: string[];
   creator_name?: string | null;
-  calendar_events: CalendarEvent | null;
-  my_submission?: Submission | null;
   my_profile?: UserProfile | null;
-  window_start?: string;
-  window_end?: string;
-  is_active?: boolean;
 }
 
 interface UserProfile {
@@ -154,7 +137,7 @@ function SectionHeader({ step, label, color }: {
 interface Props {
   formId: string;
   onBack: () => void;
-  formOptions: MeetingForm[];
+  formOptions: CalendarEvent[];
   onSelectForm: (formId: string) => void;
 }
 
@@ -164,7 +147,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
   const isAdminRole             = ["admin", "ceo", "director"].includes(role);
   const isAr                    = i18n.language === "ar";
 
-  const [form,        setForm]        = useState<MeetingForm | null>(null);
+  const [form,        setForm]        = useState<CalendarEvent | null>(null);
   const [loading,     setLoading]     = useState(true);
   const [loadErr,     setLoadErr]     = useState<string | null>(null);
   const [submitting,  setSubmitting]  = useState(false);
@@ -218,7 +201,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
   }
 
   const ev       = form;
-  const profile  = form.my_profile;
+  const profile  = form?.my_profile ?? null;
   const sigUrl   = profile?.signature_url;
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
   const position = profile?.department || profile?.role || user?.department || user?.role || "—";
@@ -269,9 +252,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
             <SelectContent>
               {formOptions.map(option => (
                 <SelectItem key={option.id} value={option.id}>
-                  {option.calendar_events
-                    ? `${isAr && option.calendar_events.title_ar ? option.calendar_events.title_ar : option.calendar_events.title} · #${option.meeting_no}`
-                    : `${t("meetingForm.noEvent")} · #${option.meeting_no}`}
+                  {isAr && option.title_ar ? option.title_ar : option.title}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -301,7 +282,7 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
           <div className="grid sm:grid-cols-2 gap-4">
             <ReadField
               label={t("meetingForm.meetingNo")}
-              value={form.meeting_no ? `#${form.meeting_no}` : "—"}
+              value={form?.meeting_no ? `#${form.meeting_no}` : form?.id ? `#${form.id.slice(0, 8)}` : "—"}
               icon={CalendarDays}
             />
             <ReadField
