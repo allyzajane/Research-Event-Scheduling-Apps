@@ -2,6 +2,8 @@ import { Router } from "express";
 import { requireAuth, requireRole, ADMIN_ROLES, isAdminRole } from "../middlewares/auth";
 import { supabaseAdmin } from "../lib/supabase";
 
+const REMINDER_MINUTES = [60, 1440];
+
 // ── Notify specific participants about an event invitation ─────────────────────
 async function notifyParticipants(
   participantIds: string[],
@@ -38,6 +40,71 @@ async function notifyParticipants(
     // Silent — notifications must never break the main action
   }
 }
+
+async function sendEventReminders(): Promise<{ sent: number }> {
+  const now = new Date();
+  const sentKeys = new Set<string>();
+  let sent = 0;
+
+  for (const minutes of REMINDER_MINUTES) {
+    const targetStart = new Date(now.getTime() + minutes * 60 * 1000);
+    const windowStart = new Date(targetStart.getTime() - 5 * 60 * 1000).toISOString();
+    const windowEnd = new Date(targetStart.getTime() + 5 * 60 * 1000).toISOString();
+
+    const { data, error } = await supabaseAdmin
+      .from("calendar_events")
+      .select("id, title, title_ar, start_time, venue, participants")
+      .gte("start_time", windowStart)
+      .lte("start_time", windowEnd);
+
+    if (error || !data) continue;
+
+    for (const row of data as Array<Record<string, unknown>>) {
+      const participants = Array.isArray(row.participants) ? row.participants.filter(Boolean) as string[] : [];
+      if (participants.length === 0) continue;
+      const eventId = String(row.id);
+      const reminderKey = `${eventId}:${minutes}`;
+      if (sentKeys.has(reminderKey)) continue;
+
+      const dateLabel = new Intl.DateTimeFormat("en-US", {
+        timeZone: "Asia/Riyadh",
+        weekday: "short", month: "short", day: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: true,
+      }).format(new Date(String(row.start_time)));
+
+      const body = `"${String(row.title)}" starts in ${minutes === 60 ? "1 hour" : "24 hours"} — ${dateLabel}`;
+      const bodyAr = `"${String(row.title_ar || row.title)}" يبدأ بعد ${minutes === 60 ? "ساعة" : "24 ساعة"} — ${dateLabel}`;
+      const rows = participants.map(userId => ({
+        user_id: userId,
+        type: "event" as const,
+        title: "Event reminder",
+        title_ar: "تذكير بالفعالية",
+        body,
+        body_ar: bodyAr,
+        link: "/calendar",
+        is_read: false,
+      }));
+
+      if (rows.length > 0) {
+        await supabaseAdmin.from("notifications").insert(rows);
+        sent += rows.length;
+        sentKeys.add(reminderKey);
+      }
+    }
+  }
+
+  return { sent };
+}
+
+router.post("/calendar/reminders/run", requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const result = await sendEventReminders();
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Failed to run event reminders");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
 
 const router = Router();
 
@@ -234,6 +301,16 @@ router.get("/calendar/upcoming", requireAuth, async (req, res) => {
   } catch (err) {
     req.log.error({ err }, "Failed to get upcoming events");
     res.json([]);
+  }
+});
+
+router.post("/calendar/reminders/run", requireAuth, requireRole(...ADMIN_ROLES), async (req, res) => {
+  try {
+    const result = await sendEventReminders();
+    res.json(result);
+  } catch (err) {
+    req.log.error({ err }, "Failed to run event reminders");
+    res.status(500).json({ error: "Internal server error" });
   }
 });
 
