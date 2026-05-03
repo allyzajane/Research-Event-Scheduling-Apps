@@ -30,27 +30,7 @@ interface CalendarEvent {
   creator_name?: string | null;
 }
 
-interface MeetingFormItem {
-  id: string;
-  meeting_no: number;
-  title: string;
-  title_ar?: string;
-  start_time: string;
-  end_time?: string;
-  venue?: string;
-  location?: string;
-  event_type?: string;
-  organizer?: string;
-  participants?: string[];
-  creator_name?: string | null;
-  calendar_events?: CalendarEvent | null;
-  my_submission?: { id: string; submission_no: number; submitted_at: string } | null;
-}
-
-type AttendanceFormOption = Omit<MeetingFormItem, "calendar_events"> & {
-  calendar_events: CalendarEvent | null;
-  my_submission?: { id: string; submission_no: number; submitted_at: string; form_id: string; user_id: string } | null;
-};
+type AttendanceEvent = CalendarEvent;
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -71,7 +51,7 @@ function formatTime(iso: string) {
   }).format(new Date(iso));
 }
 
-function getGateStatus(form: MeetingFormItem) {
+function getGateStatus() {
   return "open";
 }
 
@@ -79,7 +59,7 @@ function isAdminRoleValue(role?: string | null) {
   return ["admin", "ceo", "director"].includes(role ?? "");
 }
 
-function getEventLabel(ev: Pick<MeetingFormItem, "title" | "title_ar" | "event_type" | "venue" | "location">) {
+function getEventLabel(ev: Pick<AttendanceEvent, "title" | "title_ar" | "event_type" | "venue" | "location">) {
   const primary = i18n.language === "ar" && ev.title_ar ? ev.title_ar : ev.title;
   const place = ev.venue || ev.location;
   const parts = [primary, ev.event_type, place].filter(Boolean);
@@ -93,7 +73,7 @@ export default function AttendancePage() {
   const { user, isAdmin, role } = useAuth();
   const isAdminRole             = isAdminRoleValue(role);
 
-  const [forms,        setForms]        = useState<AttendanceFormOption[]>([]);
+  const [forms,        setForms]        = useState<AttendanceEvent[]>([]);
   const [loading,      setLoading]      = useState(true);
   const [selectedForm, setSelectedForm] = useState<string | null>(null);
   const [loadErr,      setLoadErr]      = useState<string | null>(null);
@@ -107,23 +87,8 @@ export default function AttendancePage() {
         headers: { Authorization: `Bearer ${token}` },
       });
       if (!r.ok) throw new Error();
-      const events = (await r.json()) as CalendarEvent[];
-      const mapped = events.map((ev, index) => ({
-        id: ev.id,
-        meeting_no: index + 1,
-        title: ev.title,
-        title_ar: ev.title_ar,
-        start_time: ev.start_time,
-        end_time: ev.end_time,
-        venue: ev.venue,
-        location: ev.location,
-        event_type: ev.event_type,
-        organizer: ev.organizer,
-        participants: ev.participants ?? [],
-        creator_name: ev.creator_name ?? null,
-        calendar_events: ev,
-      }));
-      const visible = isAdminRole ? mapped : mapped.filter(ev => (ev.participants ?? []).includes(user?.id ?? ""));
+      const events = (await r.json()) as AttendanceEvent[];
+      const visible = isAdminRole ? events : events.filter(ev => (ev.participants ?? []).includes(user?.id ?? ""));
       visible.sort((a, b) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime());
       setForms(visible);
       setSelectedForm(prev => {
@@ -142,8 +107,8 @@ export default function AttendancePage() {
 
   // ── Stats derived from forms ─────────────────────────────────────────────
 
-  const submitted  = forms.filter(f => f.my_submission).length;
-  const open       = forms.filter(f => getGateStatus(f) === "open").length;
+  const submitted  = 0;
+  const open       = forms.length;
   const total      = forms.length;
   const selected = forms.find(f => f.id === selectedForm) ?? null;
 
@@ -162,7 +127,7 @@ export default function AttendancePage() {
         <AttendanceForm
           formId={selectedForm}
           onBack={() => { setSelectedForm(null); fetchForms(); }}
-          formOptions={forms}
+          formOptions={forms as any}
           onSelectForm={setSelectedForm}
         />
       </div>
@@ -210,7 +175,7 @@ export default function AttendancePage() {
           <div className="space-y-1">
             <h2 className="text-base font-semibold text-foreground">{t("meetingForm.selectEvent")}</h2>
             <p className="text-sm text-muted-foreground">
-              {isAdminRole ? t("meetingForm.noForms") : t("meetingForm.noActiveForms")}
+          {isAdminRole ? t("meetingForm.noForms") : t("meetingForm.noActiveForms")}
             </p>
           </div>
           <Select value={selectedForm ?? ""} onValueChange={setSelectedForm} disabled={forms.length === 0}>
@@ -219,14 +184,13 @@ export default function AttendancePage() {
             </SelectTrigger>
             <SelectContent>
               {forms.map(form => {
-                const ev = form.calendar_events ?? form;
                 const label = getEventLabel(form);
                 return (
                   <SelectItem key={form.id} value={form.id}>
                     <div className="flex flex-col">
                       <span>{label}</span>
                       <span className="text-xs text-muted-foreground">
-                        {formatDate(ev.start_time)}{ev.end_time ? ` · ${formatTime(ev.start_time)} - ${formatTime(ev.end_time)}` : ` · ${formatTime(ev.start_time)}`}
+                        {formatDate(form.start_time)}{form.end_time ? ` · ${formatTime(form.start_time)} - ${formatTime(form.end_time)}` : ` · ${formatTime(form.start_time)}`}
                       </span>
                     </div>
                   </SelectItem>
@@ -272,30 +236,28 @@ export default function AttendancePage() {
                     <div>
                       <p className="text-xs text-muted-foreground uppercase tracking-wide">{t("meetingForm.tabLabel")}</p>
                       <h3 className="text-lg font-semibold text-foreground">
-                        {i18n.language === "ar" && selected.calendar_events?.title_ar
-                          ? selected.calendar_events.title_ar
-                          : selected.calendar_events?.title || t("meetingForm.noEvent")}
+                        {i18n.language === "ar" && selected.title_ar ? selected.title_ar : selected.title || t("meetingForm.noEvent")}
                       </h3>
                     </div>
-                    <Badge variant="outline">{t("meetingForm.meetingNo")} #{selected.meeting_no}</Badge>
+                    <Badge variant="outline">{t("meetingForm.meetingNo")}</Badge>
                   </div>
                   <div className="grid sm:grid-cols-2 gap-3 text-sm text-muted-foreground">
-                    {selected.calendar_events?.start_time && (
+                    {selected.start_time && (
                       <span className="flex items-center gap-2">
                         <CalendarDays className="w-4 h-4" />
-                        {formatDate(selected.calendar_events.start_time)}
+                        {formatDate(selected.start_time)}
                       </span>
                     )}
-                    {selected.calendar_events?.start_time && (
+                    {selected.start_time && (
                       <span className="flex items-center gap-2">
                         <Clock className="w-4 h-4" />
-                        {formatTime(selected.calendar_events.start_time)}
+                        {formatTime(selected.start_time)}
                       </span>
                     )}
-                    {(selected.calendar_events?.venue || selected.calendar_events?.location) && (
+                    {(selected.venue || selected.location) && (
                       <span className="flex items-center gap-2">
                         <MapPin className="w-4 h-4" />
-                        {selected.calendar_events.venue || selected.calendar_events.location}
+                        {selected.venue || selected.location}
                       </span>
                     )}
                   </div>
