@@ -5,6 +5,7 @@ import { PenLine, Upload, Trash2, Save, RotateCcw, CheckCircle2, AlertCircle } f
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/lib/supabase";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface Props {
   currentUrl: string | null | undefined;
@@ -15,6 +16,7 @@ type Tab = "draw" | "upload";
 
 export default function SignaturePanel({ currentUrl, onSaved }: Props) {
   const { t } = useTranslation();
+  const { loading: authLoading } = useAuth();
   const canvasRef     = useRef<HTMLCanvasElement>(null);
   const padRef        = useRef<SignaturePad | null>(null);
   const fileInputRef  = useRef<HTMLInputElement>(null);
@@ -76,6 +78,7 @@ export default function SignaturePanel({ currentUrl, onSaved }: Props) {
   };
 
   const uploadToServer = useCallback(async (base64: string, fileName: string, mimeType: string) => {
+    if (authLoading) throw new Error("Auth session is still loading");
     const { data: { session } } = await supabase.auth.getSession();
     const token = session?.access_token;
     const r = await fetch("/api/auth/upload-signature", {
@@ -137,6 +140,7 @@ export default function SignaturePanel({ currentUrl, onSaved }: Props) {
     setSaving(true);
     setMsg(null);
     try {
+      if (authLoading) throw new Error("Auth session is still loading");
       const { data: { session } } = await supabase.auth.getSession();
       const token = session?.access_token;
       const r = await fetch("/api/auth/me", {

@@ -75,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [user,    setUser]    = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionReady, setSessionReady] = useState(false);
 
   // Prevent duplicate profile fetches when the auth state fires multiple times.
   const fetchingRef = useRef(false);
@@ -85,6 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!newSession) {
       setUser(null);
       setLoading(false);
+      setSessionReady(true);
       return;
     }
 
@@ -102,6 +104,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     } finally {
       fetchingRef.current = false;
       setLoading(false);
+      setSessionReady(true);
     }
   }, []);
 
@@ -136,13 +139,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   /** Re-fetch the full profile from the server (e.g. after saving). */
   const refreshProfile = useCallback(async () => {
+    if (!sessionReady) return;
     const { data: { session: current } } = await supabase.auth.getSession();
     if (!current) return;
     const profile = await fetchProfile(current);
     if (profile) {
       setUser(prev => prev ? { ...prev, ...profile } : profile as AuthUser);
     }
-  }, []);
+  }, [sessionReady]);
 
   const role    = user?.role || "";
   const isAdmin = role === "admin";

@@ -33,7 +33,7 @@ interface ProfileForm {
 
 export default function ProfilePage() {
   const { t } = useTranslation();
-  const { user, session, updateUser, refreshProfile } = useAuth();
+  const { user, session, loading: authLoading, updateUser, refreshProfile } = useAuth();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [editing, setEditing]               = useState(false);
@@ -74,7 +74,7 @@ export default function ProfilePage() {
     : user.email.slice(0, 2).toUpperCase();
 
   const handleAvatarFile = async (file: File) => {
-    if (!session) return;
+    if (!session || authLoading) return;
     setUploadingAvatar(true);
     setMsg(null);
     try {
@@ -114,7 +114,7 @@ export default function ProfilePage() {
   };
 
   const handleSave = async () => {
-    if (!session) return;
+    if (!session || authLoading) return;
     setSaving(true);
     setMsg(null);
     try {
