@@ -496,7 +496,7 @@ function EventContent({ event, events }: { event: { id: string; title: string };
 
 export default function CalendarPage() {
   const { t } = useTranslation();
-  const { isAdmin, user } = useAuth();
+  const { isAdmin, user, sessionReady } = useAuth();
   const qc = useQueryClient();
   const calRef = useRef<FullCalendar>(null);
 
@@ -524,10 +524,11 @@ export default function CalendarPage() {
   const isAr = i18n.language === "ar";
   const currentUserId = user?.id ?? "";
   const visibleEvents = useMemo(() => {
+    if (!sessionReady) return [];
     if (!currentUserId) return [];
     if (isAdmin) return events;
     return events.filter(ev => Array.isArray(ev.participants) && ev.participants.includes(currentUserId));
-  }, [events, isAdmin, currentUserId]);
+  }, [events, isAdmin, currentUserId, sessionReady]);
 
   // Filtered events for sidebar
   const filteredEvents = useMemo(() => {
