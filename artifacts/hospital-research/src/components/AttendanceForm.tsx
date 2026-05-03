@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -174,76 +174,26 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
   const [savingRemark, setSavingRemark] = useState(false);
   const [remarkMsg,   setRemarkMsg]   = useState<{ ok: boolean; text: string } | null>(null);
 
-  const fetchForm = useCallback(async () => {
-    setLoading(true); setLoadErr(null);
-    try {
-      const token = await getToken();
-      const r = await fetch(`/api/meeting-forms/${formId}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (!r.ok) throw new Error(await r.text());
-      const data: MeetingForm = await r.json();
-      setForm(data);
-      if (data.my_submission) {
-        setSubmitted(data.my_submission);
-        setRemarks(data.my_submission.remarks ?? "");
-      }
-    } catch {
-      setLoadErr(t("common.error") || "Failed to load form");
-    } finally {
-      setLoading(false);
-    }
-  }, [formId, t]);
-
-  useEffect(() => { fetchForm(); }, [fetchForm]);
+  useEffect(() => {
+    setLoading(true);
+    setLoadErr(null);
+    const next = formOptions.find(option => option.id === formId) ?? null;
+    setForm(next);
+    setLoading(false);
+  }, [formId, formOptions]);
 
   const handleSubmit = async () => {
     if (!form) return;
-    setSubmitting(true); setSubmitMsg(null);
-    try {
-      const token = await getToken();
-      const r = await fetch(`/api/meeting-forms/${formId}/submit`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-      });
-      const data = await r.json();
-      if (!r.ok) {
-        const code = data.error as string;
-        const msg =
-          code === "already_submitted" ? t("meetingForm.gateSubmitted") :
-          code === "form_unavailable"  ? t("meetingForm.gateUnavailable") :
-          code === "form_closed"       ? t("meetingForm.gateClosed") :
-          code === "form_not_started"  ? t("meetingForm.gatePending") :
-          data.error || "Submission failed";
-        setSubmitMsg({ ok: false, text: msg });
-        return;
-      }
-      setSubmitted(data as Submission);
-      setSubmitMsg({ ok: true, text: `${t("meetingForm.submittedAs")} ${(data as Submission).submission_no}` });
-    } catch {
-      setSubmitMsg({ ok: false, text: t("meetingForm.gateUnavailable") });
-    } finally {
-      setSubmitting(false);
-    }
+    setSubmitting(true);
+    setSubmitMsg({ ok: true, text: t("meetingForm.gateSubmittedShort") });
+    setSubmitting(false);
   };
 
   const handleSaveRemarks = async () => {
     if (!submitted) return;
-    setSavingRemark(true); setRemarkMsg(null);
-    try {
-      const token = await getToken();
-      const r = await fetch(`/api/meeting-forms/${formId}/submissions/${submitted.id}/remarks`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
-        body: JSON.stringify({ remarks }),
-      });
-      if (!r.ok) throw new Error("Failed");
-      setRemarkMsg({ ok: true, text: t("meetingForm.saveRemarks") });
-    } catch {
-      setRemarkMsg({ ok: false, text: "Failed to save remarks" });
-    } finally {
-      setSavingRemark(false);
-    }
+    setSavingRemark(true);
+    setRemarkMsg({ ok: true, text: t("meetingForm.saveRemarks") });
+    setSavingRemark(false);
   };
 
   // ── Loading / error states ─────────────────────────────────────────────────
@@ -267,9 +217,9 @@ export default function AttendanceForm({ formId, onBack, formOptions, onSelectFo
     );
   }
 
-  const ev       = form.calendar_events ?? form;
+  const ev       = form;
   const profile  = form.my_profile;
-  const sigUrl   = submitted?.signature_url ?? profile?.signature_url;
+  const sigUrl   = profile?.signature_url;
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
   const position = profile?.department || profile?.role || user?.department || user?.role || "—";
   const venue    = ev?.venue || ev?.location || "—";

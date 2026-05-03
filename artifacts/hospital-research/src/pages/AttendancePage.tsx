@@ -75,7 +75,7 @@ export default function AttendancePage() {
 
   const [forms,        setForms]        = useState<AttendanceEvent[]>([]);
   const [loading,      setLoading]      = useState(true);
-  const [selectedForm, setSelectedForm] = useState<string | null>(null);
+  const [selectedForm, setSelectedForm] = useState<string>("");
   const [loadErr,      setLoadErr]      = useState<string | null>(null);
 
   const fetchForms = useCallback(async () => {
@@ -93,7 +93,7 @@ export default function AttendancePage() {
       setForms(visible);
       setSelectedForm(prev => {
         if (prev && visible.some(f => f.id === prev)) return prev;
-        return visible[0]?.id ?? null;
+        return visible[0]?.id ?? "";
       });
     } catch {
       setForms([]);
@@ -126,7 +126,7 @@ export default function AttendancePage() {
       <div className="p-6 max-w-2xl mx-auto">
         <AttendanceForm
           formId={selectedForm}
-          onBack={() => { setSelectedForm(null); fetchForms(); }}
+          onBack={() => { setSelectedForm(""); fetchForms(); }}
           formOptions={forms as any}
           onSelectForm={setSelectedForm}
         />
@@ -178,7 +178,7 @@ export default function AttendancePage() {
           {isAdminRole ? t("meetingForm.noForms") : t("meetingForm.noActiveForms")}
             </p>
           </div>
-          <Select value={selectedForm ?? ""} onValueChange={setSelectedForm} disabled={forms.length === 0}>
+          <Select value={selectedForm} onValueChange={setSelectedForm} disabled={forms.length === 0}>
             <SelectTrigger className="w-full">
               <SelectValue placeholder={t("meetingForm.selectFormPlaceholder")} />
             </SelectTrigger>
