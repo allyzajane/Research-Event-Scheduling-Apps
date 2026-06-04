@@ -209,9 +209,17 @@ export default function AttendanceForm({ formId, formOptions, onSelectForm }: Pr
 
   const ev       = form;
   const profile  = form?.my_profile ?? null;
-  const sigUrl   = profile?.signature_active_type === "drawn"
-    ? (resolveStorageUrl(profile?.signature_drawn_url) || resolveStorageUrl(profile?.signature_url))
-    : (resolveStorageUrl(profile?.signature_url) || resolveStorageUrl(profile?.signature_drawn_url));
+
+  // Prefer the profile embedded in the event; fall back to the auth user context
+  // so the signature is always shown even if my_profile is missing or stale.
+  const activeType = profile?.signature_active_type || user?.signature_active_type;
+  const rawUploadedUrl = profile?.signature_url || user?.signature_url;
+  const rawDrawnUrl    = profile?.signature_drawn_url || user?.signature_drawn_url;
+
+  const sigUrl = activeType === "drawn"
+    ? (resolveStorageUrl(rawDrawnUrl) || resolveStorageUrl(rawUploadedUrl))
+    : (resolveStorageUrl(rawUploadedUrl) || resolveStorageUrl(rawDrawnUrl));
+
   const userName = isAr && profile?.full_name_ar ? profile.full_name_ar : profile?.full_name ?? user?.full_name;
   const position = profile?.department || profile?.role || user?.department || user?.role || "—";
   const venue    = ev?.venue || ev?.location || "—";
