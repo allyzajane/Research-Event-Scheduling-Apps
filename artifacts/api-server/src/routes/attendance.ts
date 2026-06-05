@@ -445,40 +445,67 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
     const { event_id } = req.query as Record<string, string>;
     if (!event_id) { res.status(400).json({ error: "event_id required" }); return; }
 
-    // Fetch event participants list
-    const { data: ev, error: evErr } = await supabaseAdmin
+    // 1. Fetch event participants array (may be empty or null)
+    const { data: ev } = await supabaseAdmin
       .from("calendar_events")
       .select("participants")
       .eq("id", event_id)
       .maybeSingle();
-    if (evErr) throw evErr;
+    const eventParticipantIds: string[] = Array.isArray(ev?.participants) ? ev.participants : [];
 
-    const participantIds: string[] = Array.isArray(ev?.participants) ? ev.participants : [];
-    if (participantIds.length === 0) { res.json([]); return; }
+    // 2. Fetch activations — try with optional Section 23 columns first,
+    //    fall back to base columns if those don't exist yet.
+    type ActRow = {
+      id: string; user_id: string; activated_at: string;
+      expires_at: string; submitted_at: string | null;
+      signature_url?: string | null; admin_remarks?: string | null;
+    };
 
-    // Fetch profiles for all participants
-    const { data: profiles, error: profErr } = await supabaseAdmin
-      .from("profiles")
-      .select("id, full_name, full_name_ar, role, department, avatar_url, signature_url, signature_drawn_url, signature_active_type")
-      .in("id", participantIds);
-    if (profErr) throw profErr;
-
-    // Fetch activations for this event
-    const { data: acts, error: actErr } = await supabaseAdmin
+    let acts: ActRow[] = [];
+    const fullQuery = await supabaseAdmin
       .from("attendance_activations")
       .select("id, user_id, activated_at, expires_at, submitted_at, signature_url, admin_remarks")
       .eq("event_id", event_id);
 
-    if (actErr) {
-      if (actErr.code === "PGRST205" || actErr.code === "42P01" || actErr.message?.includes("schema cache")) {
+    if (fullQuery.error) {
+      // Table missing — return empty
+      if (fullQuery.error.code === "PGRST205" || fullQuery.error.code === "42P01"
+          || fullQuery.error.message?.includes("schema cache")) {
         res.json([]); return;
       }
-      throw actErr;
+      // Section 23 columns missing — retry without them
+      if (fullQuery.error.message?.includes("signature_url") || fullQuery.error.message?.includes("admin_remarks")
+          || fullQuery.error.code === "42703") {
+        const fallback = await supabaseAdmin
+          .from("attendance_activations")
+          .select("id, user_id, activated_at, expires_at, submitted_at")
+          .eq("event_id", event_id);
+        if (fallback.error) throw fallback.error;
+        acts = (fallback.data || []) as ActRow[];
+      } else {
+        throw fullQuery.error;
+      }
+    } else {
+      acts = (fullQuery.data || []) as ActRow[];
     }
 
-    const actMap = new Map<string, typeof acts[0]>((acts || []).map(a => [a.user_id as string, a]));
+    // 3. Union participant IDs: event list + anyone with an activation record
+    const activationUserIds = acts.map(a => a.user_id as string);
+    const allUserIds = Array.from(new Set([...eventParticipantIds, ...activationUserIds]));
 
-    // Build rows
+    // Nothing to show at all
+    if (allUserIds.length === 0) { res.json([]); return; }
+
+    // 4. Fetch profiles for the combined set
+    const { data: profiles, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, full_name_ar, role, department, avatar_url, signature_url, signature_drawn_url, signature_active_type")
+      .in("id", allUserIds);
+    if (profErr) throw profErr;
+
+    const actMap = new Map<string, ActRow>(acts.map(a => [a.user_id as string, a]));
+
+    // 5. Build rows
     const rows = (profiles || []).map(p => {
       const act = actMap.get(p.id) ?? null;
       const status = act
@@ -487,33 +514,32 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
           : "active"
         : "inactive";
 
-      // Resolve profile signature (fallback if activation snapshot is missing)
       const profileSig = p.signature_active_type === "drawn"
-        ? p.signature_drawn_url ?? p.signature_url
-        : p.signature_url ?? p.signature_drawn_url;
+        ? (p.signature_drawn_url ?? p.signature_url)
+        : (p.signature_url ?? p.signature_drawn_url);
 
       return {
-        user_id:      p.id,
-        full_name:    p.full_name ?? null,
-        full_name_ar: p.full_name_ar ?? null,
-        position:     p.department ?? p.role ?? null,
-        avatar_url:   p.avatar_url ?? null,
+        user_id:       p.id,
+        full_name:     p.full_name     ?? null,
+        full_name_ar:  p.full_name_ar  ?? null,
+        position:      p.department    ?? p.role ?? null,
+        avatar_url:    p.avatar_url    ?? null,
         status,
-        activation_id:  act?.id ?? null,
-        submitted_at:   act?.submitted_at ?? null,
-        signature_url:  (act?.signature_url as string | null) ?? profileSig ?? null,
-        admin_remarks:  (act?.admin_remarks as string | null) ?? "",
+        activation_id: act?.id         ?? null,
+        submitted_at:  act?.submitted_at ?? null,
+        signature_url: (act?.signature_url as string | null) ?? profileSig ?? null,
+        admin_remarks: (act?.admin_remarks as string | null) ?? "",
       };
     });
 
-    // Sort: submitted first (chronological), then active, expired, inactive
+    // 6. Sort: submitted chronologically first, then active → expired → inactive
     rows.sort((a, b) => {
       if (a.submitted_at && b.submitted_at)
         return new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime();
       if (a.submitted_at) return -1;
       if (b.submitted_at) return  1;
-      const order = { active: 0, expired: 1, inactive: 2 };
-      return (order[a.status as keyof typeof order] ?? 3) - (order[b.status as keyof typeof order] ?? 3);
+      const order: Record<string, number> = { active: 0, expired: 1, inactive: 2 };
+      return (order[a.status] ?? 3) - (order[b.status] ?? 3);
     });
 
     res.json(rows);
