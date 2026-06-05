@@ -510,10 +510,10 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
     // Nothing to show at all
     if (allUserIds.length === 0) { res.json([]); return; }
 
-    // 4. Fetch profiles for the combined set
+    // 4. Fetch profiles for the combined set (basic columns only — no signature cols on profiles table)
     const { data: profiles, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, full_name_ar, role, department, avatar_url, signature_url, signature_drawn_url, signature_active_type")
+      .select("id, full_name, full_name_ar, role, department, avatar_url")
       .in("id", allUserIds);
     if (profErr) throw profErr;
 
@@ -528,9 +528,8 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
           : "active"
         : "inactive";
 
-      const profileSig = p.signature_active_type === "drawn"
-        ? (p.signature_drawn_url ?? p.signature_url)
-        : (p.signature_url ?? p.signature_drawn_url);
+      // Signature comes from the activation snapshot (captured at submit time)
+      const profileSig = null;
 
       return {
         user_id:       p.id,
