@@ -682,3 +682,32 @@ create policy "Admin direct delete documents" on public.documents
   using (
     (auth.jwt() -> 'user_metadata' ->> 'role') in ('admin', 'ceo', 'director')
   );
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 22. ATTENDANCE ACTIVATIONS
+-- Stores admin-controlled per-event, per-attendee submission
+-- windows with automatic expiry.
+-- ─────────────────────────────────────────────────────────────
+
+create table if not exists public.attendance_activations (
+  id               uuid        primary key default gen_random_uuid(),
+  event_id         uuid        not null references public.calendar_events(id) on delete cascade,
+  user_id          uuid        not null references public.profiles(id) on delete cascade,
+  activated_by     uuid        references public.profiles(id) on delete set null,
+  activated_at     timestamptz not null default now(),
+  expires_at       timestamptz not null,
+  duration_seconds int         not null,
+  submitted_at     timestamptz,
+  unique(event_id, user_id)
+);
+
+alter table public.attendance_activations enable row level security;
+
+drop policy if exists "Users see own activations" on public.attendance_activations;
+create policy "Users see own activations" on public.attendance_activations
+  for select using (auth.uid() = user_id);
+
+drop policy if exists "Service manage activations" on public.attendance_activations;
+create policy "Service manage activations" on public.attendance_activations
+  for all using (true) with check (true);

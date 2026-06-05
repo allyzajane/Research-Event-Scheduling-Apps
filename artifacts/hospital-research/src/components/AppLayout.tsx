@@ -10,7 +10,7 @@ import { useGetDashboardSummary, getGetDashboardSummaryQueryKey, useGetLandingPa
 import {
   LayoutDashboard, Users, FileText, BookOpen, Calendar, ClipboardList,
   Settings, User, LogOut, Menu, ChevronRight, Hospital,
-  Megaphone, MoreVertical, Moon, Sun,
+  Megaphone, MoreVertical, Moon, Sun, ShieldCheck,
 } from "lucide-react";
 import { NotificationBell } from "@/components/NotificationBell";
 import { EventInviteToast } from "@/components/EventInviteToast";
@@ -276,8 +276,9 @@ export function AppLayout({ children }: { children: React.ReactNode }) {
     { href: "/documents",      icon: FileText,         label: t("nav.documents"),     roles: ["admin","ceo","director","doctor","nurse","staff"] },
     { href: "/articles",       icon: BookOpen,         label: t("nav.articles"),      roles: ["admin","ceo","director","doctor","nurse","staff"] },
     { href: "/calendar",       icon: Calendar,         label: t("nav.calendar"),      roles: ["admin","ceo","director","doctor","nurse","staff"], badge: calendarBadge },
-    { href: "/attendance",     icon: ClipboardList,    label: t("nav.attendance"),    roles: ["admin","ceo","director","doctor","nurse","staff"] },
-    { href: "/admin/broadcast",icon: Megaphone,        label: t("nav.broadcast"),     roles: ["admin"] },
+    { href: "/attendance",              icon: ClipboardList, label: t("nav.attendance"),        roles: ["admin","ceo","director","doctor","nurse","staff"] },
+    { href: "/admin/attendance-control",icon: ShieldCheck,   label: t("nav.attendanceControl"), roles: ["admin","ceo","director"] },
+    { href: "/admin/broadcast",         icon: Megaphone,     label: t("nav.broadcast"),         roles: ["admin"] },
     { href: "/admin/settings", icon: Settings,         label: t("nav.adminSettings"), roles: ["admin"] },
   ];
 

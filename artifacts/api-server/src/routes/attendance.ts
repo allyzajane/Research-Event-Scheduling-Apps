@@ -203,4 +203,199 @@ router.delete("/attendance/:id", requireAuth, async (req, res) => {
   }
 });
 
+// ── GET /attendance/activations?event_id= (admin) ────────────────────────────
+router.get("/attendance/activations", requireAuth, async (req, res) => {
+  try {
+    const reqUser = (req as any).user;
+    if (!ADMIN_ROLES.includes(reqUser?.role)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+    const { event_id } = req.query as Record<string, string>;
+    if (!event_id) { res.status(400).json({ error: "event_id required" }); return; }
+
+    const now = new Date().toISOString();
+
+    // Get activations
+    const { data: acts, error } = await supabaseAdmin
+      .from("attendance_activations")
+      .select("*, profiles!attendance_activations_user_id_fkey(full_name, full_name_ar, role, department, avatar_url)")
+      .eq("event_id", event_id)
+      .order("activated_at", { ascending: false });
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "PGRST205" || error.message?.includes("does not exist") || error.message?.includes("schema cache")) {
+        res.json([]); return;
+      }
+      throw error;
+    }
+
+    const rows = (acts || []).map((a: Record<string, unknown>) => {
+      const p = a.profiles as Record<string, unknown> | null;
+      const expiresAt = new Date(a.expires_at as string);
+      const computedStatus = a.submitted_at
+        ? "submitted"
+        : expiresAt < new Date(now)
+          ? "expired"
+          : "active";
+      return {
+        ...a,
+        profiles: undefined,
+        user_name:    p?.full_name    ?? null,
+        user_name_ar: p?.full_name_ar ?? null,
+        user_role:    p?.role         ?? null,
+        user_dept:    p?.department   ?? null,
+        user_avatar:  p?.avatar_url   ?? null,
+        status:       computedStatus,
+        seconds_left: computedStatus === "active"
+          ? Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000))
+          : 0,
+      };
+    });
+
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "Failed to list activations");
+    res.json([]);
+  }
+});
+
+// ── POST /attendance/activations (admin) ─────────────────────────────────────
+// Body: { event_id, user_ids: string[], duration_seconds: number }
+router.post("/attendance/activations", requireAuth, async (req, res) => {
+  try {
+    const reqUser = (req as any).user;
+    if (!ADMIN_ROLES.includes(reqUser?.role)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+    const { event_id, user_ids, duration_seconds } = req.body as {
+      event_id: string; user_ids: string[]; duration_seconds: number;
+    };
+    if (!event_id || !Array.isArray(user_ids) || user_ids.length === 0 || !duration_seconds) {
+      res.status(400).json({ error: "event_id, user_ids[], duration_seconds required" }); return;
+    }
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + duration_seconds * 1000);
+
+    // Upsert — re-activate with a fresh window if already exists
+    const rows = user_ids.map(uid => ({
+      event_id,
+      user_id:          uid,
+      activated_by:     reqUser.id,
+      activated_at:     now.toISOString(),
+      expires_at:       expiresAt.toISOString(),
+      duration_seconds,
+      submitted_at:     null,
+    }));
+
+    const { data, error } = await supabaseAdmin
+      .from("attendance_activations")
+      .upsert(rows, { onConflict: "event_id,user_id" })
+      .select();
+
+    if (error) {
+      if (error.code === "PGRST205" || error.code === "42P01" || error.message?.includes("schema cache")) {
+        res.status(503).json({ error: "attendance_activations table not found — run Section 22 of supabase-migration.sql first" }); return;
+      }
+      throw error;
+    }
+    res.status(201).json(data);
+  } catch (err) {
+    req.log.error({ err }, "Failed to create activations");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── DELETE /attendance/activations/:id (admin) ────────────────────────────────
+router.delete("/attendance/activations/:id", requireAuth, async (req, res) => {
+  try {
+    const reqUser = (req as any).user;
+    if (!ADMIN_ROLES.includes(reqUser?.role)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+    const { error } = await supabaseAdmin
+      .from("attendance_activations")
+      .delete()
+      .eq("id", req.params.id);
+    if (error && error.code !== "PGRST205" && error.code !== "42P01") throw error;
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to revoke activation");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── GET /attendance/my-activation?event_id= (attendee) ───────────────────────
+router.get("/attendance/my-activation", requireAuth, async (req, res) => {
+  try {
+    const userId  = (req as any).user.id;
+    const { event_id } = req.query as Record<string, string>;
+    if (!event_id) { res.json(null); return; }
+
+    const { data, error } = await supabaseAdmin
+      .from("attendance_activations")
+      .select("*")
+      .eq("event_id", event_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (error) {
+      if (error.code === "42P01" || error.code === "PGRST205" || error.message?.includes("does not exist") || error.message?.includes("schema cache")) {
+        res.json(null); return;
+      }
+      throw error;
+    }
+    if (!data) { res.json(null); return; }
+
+    const expiresAt = new Date(data.expires_at as string);
+    const status = data.submitted_at
+      ? "submitted"
+      : expiresAt < new Date()
+        ? "expired"
+        : "active";
+    const secondsLeft = status === "active"
+      ? Math.max(0, Math.round((expiresAt.getTime() - Date.now()) / 1000))
+      : 0;
+
+    res.json({ ...data, status, seconds_left: secondsLeft });
+  } catch (err) {
+    req.log.error({ err }, "Failed to get my activation");
+    res.json(null);
+  }
+});
+
+// ── POST /attendance/submit-meeting (attendee) ────────────────────────────────
+// Marks the activation as submitted (records submitted_at).
+router.post("/attendance/submit-meeting", requireAuth, async (req, res) => {
+  try {
+    const userId = (req as any).user.id;
+    const { event_id } = req.body as { event_id: string };
+    if (!event_id) { res.status(400).json({ error: "event_id required" }); return; }
+
+    const { data: act, error: fetchErr } = await supabaseAdmin
+      .from("attendance_activations")
+      .select("*")
+      .eq("event_id", event_id)
+      .eq("user_id", userId)
+      .maybeSingle();
+
+    if (fetchErr) throw fetchErr;
+    if (!act) { res.status(403).json({ error: "No activation found for this event" }); return; }
+    if (act.submitted_at) { res.status(409).json({ error: "Already submitted" }); return; }
+    if (new Date(act.expires_at as string) < new Date()) {
+      res.status(403).json({ error: "Activation has expired" }); return;
+    }
+
+    const { error: updErr } = await supabaseAdmin
+      .from("attendance_activations")
+      .update({ submitted_at: new Date().toISOString() })
+      .eq("id", act.id);
+
+    if (updErr) throw updErr;
+    res.json({ success: true, submitted_at: new Date().toISOString() });
+  } catch (err) {
+    req.log.error({ err }, "Failed to submit meeting attendance");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;

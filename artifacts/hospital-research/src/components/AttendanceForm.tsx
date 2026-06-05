@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef, useCallback } from "react";
 import { useTranslation } from "react-i18next";
 import i18n from "i18next";
 import { useAuth } from "@/contexts/AuthContext";
@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { cn } from "@/lib/utils";
 import {
   CalendarDays, Clock, MapPin, Timer, User, PenLine,
-  Briefcase, CheckCircle2, AlertCircle, Loader2, ShieldAlert,
+  Briefcase, CheckCircle2, AlertCircle, Loader2, ShieldAlert, Lock,
 } from "lucide-react";
 
 // ─── Types ─────────────────────────────────────────────────────────────────
@@ -149,6 +149,61 @@ interface Props {
   onSelectForm: (formId: string) => void;
 }
 
+// ─── Activation state ───────────────────────────────────────────────────────
+
+interface Activation {
+  id: string;
+  event_id: string;
+  user_id: string;
+  activated_at: string;
+  expires_at: string;
+  duration_seconds: number;
+  submitted_at?: string | null;
+  status: "active" | "expired" | "submitted";
+  seconds_left: number;
+}
+
+function fmtCountdown(sec: number): string {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  const s = sec % 60;
+  if (h > 0) return `${h}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+  return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+// ─── Countdown display ───────────────────────────────────────────────────────
+
+function CountdownTimer({ activation }: { activation: Activation }) {
+  const [secs, setSecs] = useState(activation.seconds_left);
+
+  useEffect(() => {
+    setSecs(activation.seconds_left);
+    if (activation.status !== "active" || activation.seconds_left <= 0) return;
+    const id = setInterval(() => setSecs(s => Math.max(0, s - 1)), 1000);
+    return () => clearInterval(id);
+  }, [activation.seconds_left, activation.status]);
+
+  const isWarning  = secs <= 120 && secs > 30;
+  const isCritical = secs <= 30;
+
+  return (
+    <div className={cn(
+      "flex items-center gap-2 px-4 py-2.5 rounded-xl border text-sm font-medium",
+      isCritical ? "bg-red-50 border-red-200 text-red-700 dark:bg-red-950/40 dark:border-red-800 dark:text-red-400"
+      : isWarning ? "bg-amber-50 border-amber-200 text-amber-700 dark:bg-amber-950/40 dark:border-amber-800 dark:text-amber-400"
+      : "bg-emerald-50 border-emerald-200 text-emerald-700 dark:bg-emerald-950/40 dark:border-emerald-800 dark:text-emerald-400"
+    )}>
+      <Timer className={cn("w-4 h-4 flex-shrink-0", isCritical && "animate-pulse")} />
+      <span>{i18n.language === "ar" ? "الوقت المتبقي:" : "Time remaining:"}</span>
+      <span className="font-mono font-bold tabular-nums text-base tracking-tight">
+        {fmtCountdown(secs)}
+      </span>
+    </div>
+  );
+}
+
+// ─── Main component ─────────────────────────────────────────────────────────
+
 export default function AttendanceForm({ formId, formOptions, onSelectForm }: Props) {
   const { t }                   = useTranslation();
   const { user, isAdmin, role } = useAuth();
@@ -165,6 +220,21 @@ export default function AttendanceForm({ formId, formOptions, onSelectForm }: Pr
   const [savingRemark, setSavingRemark] = useState(false);
   const [remarkMsg,   setRemarkMsg]   = useState<{ ok: boolean; text: string } | null>(null);
 
+  // Activation window polling
+  const [activation, setActivation] = useState<Activation | null>(null);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  const fetchActivation = useCallback(async (eventId: string) => {
+    try {
+      const token = await getToken();
+      const r = await fetch(`/api/attendance/my-activation?event_id=${eventId}`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = r.ok ? (await r.json()) as Activation | null : null;
+      setActivation(data);
+    } catch { setActivation(null); }
+  }, []);
+
   useEffect(() => {
     setLoading(true);
     setLoadErr(null);
@@ -173,11 +243,39 @@ export default function AttendanceForm({ formId, formOptions, onSelectForm }: Pr
     setLoading(false);
   }, [formId, formOptions]);
 
+  // Poll activation every 8 s whenever a form is selected
+  useEffect(() => {
+    if (!formId) return;
+    fetchActivation(formId);
+    if (pollRef.current) clearInterval(pollRef.current);
+    pollRef.current = setInterval(() => fetchActivation(formId), 8_000);
+    return () => { if (pollRef.current) clearInterval(pollRef.current); };
+  }, [formId, fetchActivation]);
+
   const handleSubmit = async () => {
-    if (!form) return;
+    if (!form || !activation || activation.status !== "active") return;
     setSubmitting(true);
-    setSubmitMsg({ ok: true, text: t("meetingForm.gateSubmittedShort") });
-    setSubmitting(false);
+    setSubmitMsg(null);
+    try {
+      const token = await getToken();
+      const r = await fetch("/api/attendance/submit-meeting", {
+        method: "POST",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ event_id: form.id }),
+      });
+      if (!r.ok) {
+        const err = await r.json();
+        setSubmitMsg({ ok: false, text: err.error || t("common.error") });
+        return;
+      }
+      setSubmitMsg({ ok: true, text: t("meetingForm.gateSubmittedShort") });
+      setSubmitted({ id: "local", form_id: form.id, user_id: user?.id ?? "", submission_no: 1, submitted_at: new Date().toISOString() });
+      await fetchActivation(form.id);
+    } catch {
+      setSubmitMsg({ ok: false, text: t("common.error") });
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   const handleSaveRemarks = async () => {
@@ -443,6 +541,29 @@ export default function AttendanceForm({ formId, formOptions, onSelectForm }: Pr
       {/* ─── Submit / status ─────────────────────────────────────────────────── */}
       {gateStatus !== "submitted" && (
         <div className="space-y-3">
+          {/* Countdown timer — shown when activation is active */}
+          {activation?.status === "active" && (
+            <CountdownTimer activation={activation} />
+          )}
+
+          {/* Locked state — not yet activated */}
+          {!activation && !isAdminRole && (
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-muted/40 border border-dashed border-border text-sm text-muted-foreground">
+              <Lock className="w-4 h-4 flex-shrink-0" />
+              {isAr
+                ? "في انتظار تفعيل المسؤول لنافذة الحضور."
+                : "Waiting for the admin to activate your submission window."}
+            </div>
+          )}
+
+          {/* Expired state */}
+          {activation?.status === "expired" && (
+            <div className="flex items-center gap-2.5 px-4 py-3 rounded-xl bg-red-50 border border-red-200 dark:bg-red-950/40 dark:border-red-800 text-sm text-red-700 dark:text-red-400">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              {isAr ? "انتهت نافذة الحضور الخاصة بك." : "Your submission window has expired."}
+            </div>
+          )}
+
           {submitMsg && (
             <div className={cn(
               "flex items-center gap-2 px-4 py-3 rounded-xl text-sm font-medium border",
@@ -459,14 +580,18 @@ export default function AttendanceForm({ formId, formOptions, onSelectForm }: Pr
 
           <Button
             onClick={handleSubmit}
-            disabled={submitting || gateStatus !== "open"}
-            className="w-full gap-2 h-11 text-base"
+            disabled={submitting || activation?.status !== "active"}
+            className={cn(
+              "w-full gap-2 h-11 text-base",
+              activation?.status !== "active" && "opacity-60 cursor-not-allowed"
+            )}
           >
             {submitting
               ? <><Loader2 className="w-4 h-4 animate-spin" />{t("meetingForm.submitting")}</>
-              : t("meetingForm.submitBtn")}
+              : activation?.status === "active"
+                ? t("meetingForm.submitBtn")
+                : <><Lock className="w-4 h-4" />{t("meetingForm.submitBtn")}</>}
           </Button>
-
         </div>
       )}
     </div>

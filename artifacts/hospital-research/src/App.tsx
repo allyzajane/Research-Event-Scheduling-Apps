@@ -36,6 +36,7 @@ const AttendancePage = lazy(() => import("@/pages/AttendancePage"));
 const SettingsPage  = lazy(() => import("@/pages/SettingsPage"));
 const ProfilePage           = lazy(() => import("@/pages/ProfilePage"));
 const NotificationBroadcastPage = lazy(() => import("@/pages/NotificationBroadcastPage"));
+const AttendanceControlPage = lazy(() => import("@/pages/AttendanceControlPage"));
 
 // PageLoader — lightweight spinner shown while a chunk loads
 function PageLoader() {
@@ -116,6 +117,12 @@ function Router() {
         <Route path="/admin/broadcast">
           <ProtectedRoute adminOnly>
             <AppLayout><NotificationBroadcastPage /></AppLayout>
+          </ProtectedRoute>
+        </Route>
+
+        <Route path="/admin/attendance-control">
+          <ProtectedRoute adminOnly>
+            <AppLayout><AttendanceControlPage /></AppLayout>
           </ProtectedRoute>
         </Route>
 
