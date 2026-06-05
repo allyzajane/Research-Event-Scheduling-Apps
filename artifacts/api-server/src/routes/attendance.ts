@@ -405,7 +405,21 @@ router.post("/attendance/submit-meeting", requireAuth, async (req, res) => {
       .eq("id", act.id);
 
     if (updErr) throw updErr;
-    res.json({ success: true, submitted_at: now });
+
+    // Calculate the submission sequence number: rank among all submissions
+    // for this event ordered by submitted_at ASC (1 = first to submit).
+    const { data: allSubs } = await supabaseAdmin
+      .from("attendance_activations")
+      .select("user_id, submitted_at")
+      .eq("event_id", event_id)
+      .not("submitted_at", "is", null)
+      .order("submitted_at", { ascending: true });
+
+    const submissionNo = allSubs
+      ? allSubs.findIndex(r => r.user_id === userId) + 1
+      : 1;
+
+    res.json({ success: true, submitted_at: now, submission_no: submissionNo });
   } catch (err) {
     req.log.error({ err }, "Failed to submit meeting attendance");
     res.status(500).json({ error: "Internal server error" });

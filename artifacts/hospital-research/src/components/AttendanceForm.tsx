@@ -268,8 +268,10 @@ export default function AttendanceForm({ formId, formOptions, onSelectForm }: Pr
         setSubmitMsg({ ok: false, text: err.error || t("common.error") });
         return;
       }
+      const result = await r.json();
+      const submissionNo: number = result.submission_no ?? 1;
       setSubmitMsg({ ok: true, text: t("meetingForm.gateSubmittedShort") });
-      setSubmitted({ id: "local", form_id: form.id, user_id: user?.id ?? "", submission_no: 1, submitted_at: new Date().toISOString() });
+      setSubmitted({ id: "local", form_id: form.id, user_id: user?.id ?? "", submission_no: submissionNo, submitted_at: result.submitted_at ?? new Date().toISOString() });
       await fetchActivation(form.id);
     } catch {
       setSubmitMsg({ ok: false, text: t("common.error") });
