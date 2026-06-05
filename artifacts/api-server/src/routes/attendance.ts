@@ -399,10 +399,26 @@ router.post("/attendance/submit-meeting", requireAuth, async (req, res) => {
       : null;
 
     const now = new Date().toISOString();
-    const { error: updErr } = await supabaseAdmin
+
+    // Try to save with signature_url (requires Section 23); fall back to just submitted_at
+    let updErr: unknown = null;
+    const withSig = await supabaseAdmin
       .from("attendance_activations")
       .update({ submitted_at: now, signature_url: signatureUrl ?? null })
       .eq("id", act.id);
+
+    if (withSig.error) {
+      if (withSig.error.code === "42703" || withSig.error.message?.includes("signature_url")) {
+        // Section 23 not run yet — save without signature
+        const noSig = await supabaseAdmin
+          .from("attendance_activations")
+          .update({ submitted_at: now })
+          .eq("id", act.id);
+        updErr = noSig.error;
+      } else {
+        updErr = withSig.error;
+      }
+    }
 
     if (updErr) throw updErr;
 
@@ -510,17 +526,39 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
     // Nothing to show at all
     if (allUserIds.length === 0) { res.json([]); return; }
 
-    // 4. Fetch profiles for the combined set (basic columns only — no signature cols on profiles table)
-    const { data: profiles, error: profErr } = await supabaseAdmin
+    // 4. Fetch profiles — try with signature columns (Section 15/19), fall back to base if not run yet
+    type ProfileRow = {
+      id: string; full_name: string | null; full_name_ar: string | null;
+      role: string | null; department: string | null; avatar_url: string | null;
+      signature_url?: string | null; signature_drawn_url?: string | null; signature_active_type?: string | null;
+    };
+
+    let profiles: ProfileRow[] = [];
+    const profileFull = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, full_name_ar, role, department, avatar_url")
+      .select("id, full_name, full_name_ar, role, department, avatar_url, signature_url, signature_drawn_url, signature_active_type")
       .in("id", allUserIds);
-    if (profErr) throw profErr;
+
+    if (profileFull.error) {
+      // Signature columns not migrated yet — retry with base columns only
+      if (profileFull.error.code === "42703" || profileFull.error.message?.includes("signature")) {
+        const profileBase = await supabaseAdmin
+          .from("profiles")
+          .select("id, full_name, full_name_ar, role, department, avatar_url")
+          .in("id", allUserIds);
+        if (profileBase.error) throw profileBase.error;
+        profiles = (profileBase.data || []) as ProfileRow[];
+      } else {
+        throw profileFull.error;
+      }
+    } else {
+      profiles = (profileFull.data || []) as ProfileRow[];
+    }
 
     const actMap = new Map<string, ActRow>(acts.map(a => [a.user_id as string, a]));
 
     // 5. Build rows
-    const rows = (profiles || []).map(p => {
+    const rows = profiles.map(p => {
       const act = actMap.get(p.id) ?? null;
       const status = act
         ? act.submitted_at ? "submitted"
@@ -528,8 +566,10 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
           : "active"
         : "inactive";
 
-      // Signature comes from the activation snapshot (captured at submit time)
-      const profileSig = null;
+      // Signature priority: activation snapshot (captured at submit) → profile signature
+      const profileSig = p.signature_active_type === "drawn"
+        ? (p.signature_drawn_url ?? p.signature_url)
+        : (p.signature_url ?? p.signature_drawn_url);
 
       return {
         user_id:       p.id,
