@@ -711,3 +711,14 @@ create policy "Users see own activations" on public.attendance_activations
 drop policy if exists "Service manage activations" on public.attendance_activations;
 create policy "Service manage activations" on public.attendance_activations
   for all using (true) with check (true);
+
+
+-- ─────────────────────────────────────────────────────────────
+-- 23. ATTENDANCE SHEET COLUMNS
+-- Adds signature snapshot and admin remarks to activations.
+-- Run this after Section 22.
+-- ─────────────────────────────────────────────────────────────
+
+alter table public.attendance_activations
+  add column if not exists signature_url  text,
+  add column if not exists admin_remarks  text;

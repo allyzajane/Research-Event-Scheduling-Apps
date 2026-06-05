@@ -364,7 +364,7 @@ router.get("/attendance/my-activation", requireAuth, async (req, res) => {
 });
 
 // ── POST /attendance/submit-meeting (attendee) ────────────────────────────────
-// Marks the activation as submitted (records submitted_at).
+// Marks the activation as submitted; snapshots the user's signature.
 router.post("/attendance/submit-meeting", requireAuth, async (req, res) => {
   try {
     const userId = (req as any).user.id;
@@ -385,15 +385,140 @@ router.post("/attendance/submit-meeting", requireAuth, async (req, res) => {
       res.status(403).json({ error: "Activation has expired" }); return;
     }
 
+    // Snapshot the user's current signature from their profile
+    const { data: profile } = await supabaseAdmin
+      .from("profiles")
+      .select("signature_url, signature_drawn_url, signature_active_type")
+      .eq("id", userId)
+      .maybeSingle();
+
+    const signatureUrl = profile
+      ? (profile.signature_active_type === "drawn"
+          ? profile.signature_drawn_url
+          : profile.signature_url) ?? profile.signature_url ?? profile.signature_drawn_url
+      : null;
+
+    const now = new Date().toISOString();
     const { error: updErr } = await supabaseAdmin
       .from("attendance_activations")
-      .update({ submitted_at: new Date().toISOString() })
+      .update({ submitted_at: now, signature_url: signatureUrl ?? null })
       .eq("id", act.id);
 
     if (updErr) throw updErr;
-    res.json({ success: true, submitted_at: new Date().toISOString() });
+    res.json({ success: true, submitted_at: now });
   } catch (err) {
     req.log.error({ err }, "Failed to submit meeting attendance");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── PATCH /attendance/activations/:id/remarks (admin) ────────────────────────
+// Updates the admin remarks for one activation row.
+router.patch("/attendance/activations/:id/remarks", requireAuth, async (req, res) => {
+  try {
+    const reqUser = (req as any).user;
+    if (!ADMIN_ROLES.includes(reqUser?.role)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+    const { remarks } = req.body as { remarks: string };
+    const { error } = await supabaseAdmin
+      .from("attendance_activations")
+      .update({ admin_remarks: remarks ?? "" })
+      .eq("id", req.params.id);
+    if (error && error.code !== "PGRST205" && error.code !== "42P01") throw error;
+    res.json({ success: true });
+  } catch (err) {
+    req.log.error({ err }, "Failed to save remarks");
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ── GET /attendance/sheet?event_id= (admin) ──────────────────────────────────
+// Returns all event participants with their activation/submission data,
+// ordered by submitted_at ASC (submitted first), then not-submitted.
+router.get("/attendance/sheet", requireAuth, async (req, res) => {
+  try {
+    const reqUser = (req as any).user;
+    if (!ADMIN_ROLES.includes(reqUser?.role)) {
+      res.status(403).json({ error: "Forbidden" }); return;
+    }
+    const { event_id } = req.query as Record<string, string>;
+    if (!event_id) { res.status(400).json({ error: "event_id required" }); return; }
+
+    // Fetch event participants list
+    const { data: ev, error: evErr } = await supabaseAdmin
+      .from("calendar_events")
+      .select("participants")
+      .eq("id", event_id)
+      .maybeSingle();
+    if (evErr) throw evErr;
+
+    const participantIds: string[] = Array.isArray(ev?.participants) ? ev.participants : [];
+    if (participantIds.length === 0) { res.json([]); return; }
+
+    // Fetch profiles for all participants
+    const { data: profiles, error: profErr } = await supabaseAdmin
+      .from("profiles")
+      .select("id, full_name, full_name_ar, role, department, avatar_url, signature_url, signature_drawn_url, signature_active_type")
+      .in("id", participantIds);
+    if (profErr) throw profErr;
+
+    // Fetch activations for this event
+    const { data: acts, error: actErr } = await supabaseAdmin
+      .from("attendance_activations")
+      .select("id, user_id, activated_at, expires_at, submitted_at, signature_url, admin_remarks")
+      .eq("event_id", event_id);
+
+    if (actErr) {
+      if (actErr.code === "PGRST205" || actErr.code === "42P01" || actErr.message?.includes("schema cache")) {
+        res.json([]); return;
+      }
+      throw actErr;
+    }
+
+    const actMap = new Map<string, typeof acts[0]>((acts || []).map(a => [a.user_id as string, a]));
+
+    // Build rows
+    const rows = (profiles || []).map(p => {
+      const act = actMap.get(p.id) ?? null;
+      const status = act
+        ? act.submitted_at ? "submitted"
+          : new Date(act.expires_at as string) < new Date() ? "expired"
+          : "active"
+        : "inactive";
+
+      // Resolve profile signature (fallback if activation snapshot is missing)
+      const profileSig = p.signature_active_type === "drawn"
+        ? p.signature_drawn_url ?? p.signature_url
+        : p.signature_url ?? p.signature_drawn_url;
+
+      return {
+        user_id:      p.id,
+        full_name:    p.full_name ?? null,
+        full_name_ar: p.full_name_ar ?? null,
+        position:     p.department ?? p.role ?? null,
+        avatar_url:   p.avatar_url ?? null,
+        status,
+        activation_id:  act?.id ?? null,
+        submitted_at:   act?.submitted_at ?? null,
+        signature_url:  (act?.signature_url as string | null) ?? profileSig ?? null,
+        admin_remarks:  (act?.admin_remarks as string | null) ?? "",
+      };
+    });
+
+    // Sort: submitted first (chronological), then active, expired, inactive
+    rows.sort((a, b) => {
+      if (a.submitted_at && b.submitted_at)
+        return new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime();
+      if (a.submitted_at) return -1;
+      if (b.submitted_at) return  1;
+      const order = { active: 0, expired: 1, inactive: 2 };
+      return (order[a.status as keyof typeof order] ?? 3) - (order[b.status as keyof typeof order] ?? 3);
+    });
+
+    res.json(rows);
+  } catch (err) {
+    req.log.error({ err }, "Failed to get attendance sheet");
     res.status(500).json({ error: "Internal server error" });
   }
 });
