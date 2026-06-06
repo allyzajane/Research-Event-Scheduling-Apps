@@ -13,7 +13,7 @@ import { Textarea } from "@/components/ui/textarea";
 import {
   ShieldCheck, Clock, UserCheck, UserX, RotateCcw, Loader2,
   CalendarDays, Timer, CheckCircle2, XCircle, AlertCircle, Users, Play,
-  ClipboardList, Save, PenLine, Search,
+  ClipboardList, Save, PenLine, Search, Printer,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -249,7 +249,11 @@ function RemarksCell({ activationId, initial, isAr }: {
 
 // ─── Attendance Sheet Table ───────────────────────────────────────────────────
 
-function AttendanceSheet({ eventId, isAr }: { eventId: string; isAr: boolean }) {
+function AttendanceSheet({
+  eventId, isAr, eventTitle, eventDate,
+}: {
+  eventId: string; isAr: boolean; eventTitle: string; eventDate: string;
+}) {
   const [rows,    setRows]    = useState<SheetRow[]>([]);
   const [loading, setLoading] = useState(false);
   const [search,  setSearch]  = useState("");
@@ -268,6 +272,119 @@ function AttendanceSheet({ eventId, isAr }: { eventId: string; isAr: boolean }) 
   }, [eventId]);
 
   useEffect(() => { load(); }, [load]);
+
+  const handlePrint = () => {
+    const submittedRows = rows.filter(r => r.status === "submitted");
+    const dir = isAr ? "rtl" : "ltr";
+    const lang = isAr ? "ar" : "en";
+
+    const fmt = (iso: string) =>
+      new Intl.DateTimeFormat(isAr ? "ar-SA" : "en-GB", {
+        timeZone: "Asia/Riyadh", day: "numeric", month: "long", year: "numeric",
+        hour: "2-digit", minute: "2-digit", hour12: true,
+      }).format(new Date(iso));
+
+    const fmtDay = (iso: string) =>
+      new Intl.DateTimeFormat(isAr ? "ar-SA" : "en-GB", {
+        timeZone: "Asia/Riyadh", day: "numeric", month: "long", year: "numeric",
+      }).format(new Date(iso));
+
+    const tableRows = submittedRows.map((row, idx) => {
+      const name = (isAr && row.full_name_ar ? row.full_name_ar : row.full_name) || "—";
+      const sigHtml = row.signature_url
+        ? `<img src="${row.signature_url}" style="max-height:56px;max-width:110px;object-fit:contain;display:block;margin:auto" />`
+        : `<span style="color:#aaa;font-size:11px">${isAr ? "لا يوجد" : "None"}</span>`;
+      return `
+        <tr>
+          <td style="text-align:center;font-weight:bold;color:#1e3a5f">${idx + 1}</td>
+          <td>${name}</td>
+          <td>${row.position || "—"}</td>
+          <td style="text-align:center">${sigHtml}</td>
+          <td>${row.submitted_at ? fmt(row.submitted_at) : "—"}</td>
+          <td>${row.admin_remarks || "—"}</td>
+        </tr>`;
+    }).join("");
+
+    const printedOn = new Intl.DateTimeFormat(isAr ? "ar-SA" : "en-GB", {
+      day: "numeric", month: "long", year: "numeric",
+    }).format(new Date());
+
+    const html = `<!DOCTYPE html>
+<html dir="${dir}" lang="${lang}">
+<head>
+  <meta charset="UTF-8" />
+  <title>${isAr ? "كشف الحضور" : "Attendance Sheet"}</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: ${isAr ? "'Segoe UI', Arial, Tahoma, sans-serif" : "Arial, sans-serif"};
+      font-size: 12px; color: #111; padding: 28px 36px; direction: ${dir};
+    }
+    .header { text-align: center; margin-bottom: 20px; padding-bottom: 14px; border-bottom: 3px solid #1e3a5f; }
+    .header h1 { font-size: 20px; font-weight: bold; color: #1e3a5f; margin-bottom: 4px; }
+    .header h2 { font-size: 14px; color: #444; font-weight: 500; }
+    .meta { display: flex; justify-content: space-between; margin-bottom: 16px; font-size: 11px; color: #555; background: #f5f7fa; padding: 8px 12px; border-radius: 6px; }
+    .summary { font-size: 12px; margin-bottom: 10px; color: #333; }
+    table { width: 100%; border-collapse: collapse; }
+    thead th {
+      background: #1e3a5f; color: #fff; padding: 9px 10px;
+      text-align: ${isAr ? "right" : "left"}; font-size: 11px; font-weight: 600;
+    }
+    tbody td { padding: 8px 10px; border-bottom: 1px solid #e5e7eb; vertical-align: middle; font-size: 11.5px; }
+    tbody tr:nth-child(even) td { background: #f8fafc; }
+    .footer { margin-top: 28px; display: flex; justify-content: space-between; font-size: 10px; color: #888; border-top: 1px solid #ddd; padding-top: 10px; }
+    @media print { @page { margin: 14mm 12mm; size: A4; } }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>${isAr ? "مستشفى الطائف للأطفال" : "Taif Children's Hospital"}</h1>
+    <h2>${isAr ? "كشف الحضور الرسمي" : "Official Attendance Sheet"} — ${eventTitle}</h2>
+  </div>
+  <div class="meta">
+    <span>${isAr ? "تاريخ الفعالية:" : "Event Date:"} ${eventDate ? fmtDay(eventDate) : "—"}</span>
+    <span>${isAr ? "عدد الحاضرين:" : "Attendees Submitted:"} ${submittedRows.length}</span>
+    <span>${isAr ? "تاريخ الطباعة:" : "Printed:"} ${printedOn}</span>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th style="width:36px;text-align:center">#</th>
+        <th>${isAr ? "الاسم" : "Name"}</th>
+        <th>${isAr ? "المنصب / الجهة" : "Position / Dept."}</th>
+        <th style="width:130px;text-align:center">${isAr ? "التوقيع" : "Signature"}</th>
+        <th style="min-width:130px">${isAr ? "وقت التسجيل" : "Submitted At"}</th>
+        <th>${isAr ? "ملاحظات" : "Remarks"}</th>
+      </tr>
+    </thead>
+    <tbody>${tableRows || `<tr><td colspan="6" style="text-align:center;color:#aaa;padding:20px">${isAr ? "لا توجد بيانات" : "No submitted entries"}</td></tr>`}</tbody>
+  </table>
+  <div class="footer">
+    <span>${isAr ? "نظام إدارة البحوث — مستشفى الطائف للأطفال" : "Research Management System — Taif Children's Hospital"}</span>
+    <span>${isAr ? "وثيقة رسمية" : "Official Document"}</span>
+  </div>
+  <script>
+    window.onload = function() {
+      // Wait for images to load before printing
+      var imgs = document.querySelectorAll('img');
+      var total = imgs.length;
+      if (total === 0) { window.print(); return; }
+      var loaded = 0;
+      function tryPrint() { loaded++; if (loaded >= total) window.print(); }
+      imgs.forEach(function(img) {
+        if (img.complete) { tryPrint(); }
+        else { img.onload = tryPrint; img.onerror = tryPrint; }
+      });
+    };
+  </script>
+</body>
+</html>`;
+
+    const win = window.open("", "_blank", "width=960,height=720,scrollbars=yes");
+    if (!win) { alert(isAr ? "السماح بالنوافذ المنبثقة لاستخدام الطباعة" : "Allow pop-ups to use the print feature"); return; }
+    win.document.write(html);
+    win.document.close();
+  };
 
   const filtered = rows.filter(row => {
     if (!search) return true;
@@ -312,7 +429,7 @@ function AttendanceSheet({ eventId, isAr }: { eventId: string; isAr: boolean }) 
       </div>
 
       {/* Stats strip */}
-      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground items-center">
         <span className="flex items-center gap-1">
           <Users className="w-3.5 h-3.5" />
           {rows.length} {isAr ? "مدعو" : "invited"}
@@ -327,12 +444,23 @@ function AttendanceSheet({ eventId, isAr }: { eventId: string; isAr: boolean }) 
           <Clock className="w-3.5 h-3.5" />
           {pending.length} {isAr ? "في الانتظار" : "pending"}
         </span>
-        <button
-          onClick={load}
-          className="ms-auto flex items-center gap-1 text-primary hover:underline"
-        >
-          <RotateCcw className="w-3 h-3" /> {isAr ? "تحديث" : "Refresh"}
-        </button>
+        <div className="ms-auto flex items-center gap-2">
+          <button
+            onClick={load}
+            className="flex items-center gap-1 text-primary hover:underline"
+          >
+            <RotateCcw className="w-3 h-3" /> {isAr ? "تحديث" : "Refresh"}
+          </button>
+          {rows.length > 0 && (
+            <button
+              onClick={handlePrint}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-primary text-white text-xs font-medium hover:bg-primary/90 transition-colors shadow-sm"
+            >
+              <Printer className="w-3.5 h-3.5" />
+              {isAr ? "طباعة / PDF" : "Print / PDF"}
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Table */}
@@ -851,7 +979,15 @@ export default function AttendanceControlPage() {
           </CardHeader>
           <CardContent>
             {selectedEventId
-              ? <AttendanceSheet eventId={selectedEventId} isAr={isAr} />
+              ? <AttendanceSheet
+                  eventId={selectedEventId}
+                  isAr={isAr}
+                  eventTitle={(() => {
+                    const ev = events.find(e => e.id === selectedEventId);
+                    return ev ? (isAr && ev.title_ar ? ev.title_ar : ev.title) : "";
+                  })()}
+                  eventDate={events.find(e => e.id === selectedEventId)?.start_time ?? ""}
+                />
               : (
                 <div className="py-12 text-center text-muted-foreground">
                   <CalendarDays className="w-8 h-8 mx-auto mb-2 opacity-30" />
