@@ -41,7 +41,7 @@ async function uploadSignatureForUser(opts: {
   if (uploadError) throw Object.assign(new Error("Upload failed: " + uploadError.message), { status: 500 });
 
   const profileField = sig_type === "drawn" ? "signature_drawn_url" : "signature_url";
-  await supabaseAdmin
+  const { error: updateErr } = await supabaseAdmin
     .from("profiles")
     .update({
       [profileField]:         storagePath,
@@ -49,6 +49,12 @@ async function uploadSignatureForUser(opts: {
       updated_at:             new Date().toISOString(),
     })
     .eq("id", userId);
+
+  // If the profile signature columns don't exist yet (42703), this update fails silently —
+  // the file is still saved to storage and the path is returned correctly.
+  if (updateErr && updateErr.code !== "42703") {
+    throw Object.assign(new Error("Profile update failed: " + updateErr.message), { status: 500 });
+  }
 
   const { data: urlData } = supabaseAdmin.storage.from("hospital-files").getPublicUrl(storagePath);
   return { url: urlData.publicUrl, path: storagePath };

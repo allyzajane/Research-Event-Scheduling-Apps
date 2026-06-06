@@ -526,36 +526,57 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
     // Nothing to show at all
     if (allUserIds.length === 0) { res.json([]); return; }
 
-    // 4. Fetch profiles — try with signature columns (Section 15/19), fall back to base if not run yet
+    // 4. Fetch profiles using select("*") so we get all columns regardless of
+    //    which migration sections have been applied (avoids 42703 on optional cols).
     type ProfileRow = {
       id: string; full_name: string | null; full_name_ar: string | null;
       role: string | null; department: string | null; avatar_url: string | null;
       signature_url?: string | null; signature_drawn_url?: string | null; signature_active_type?: string | null;
     };
 
-    let profiles: ProfileRow[] = [];
-    const profileFull = await supabaseAdmin
+    const { data: profileData, error: profErr } = await supabaseAdmin
       .from("profiles")
-      .select("id, full_name, full_name_ar, role, department, avatar_url, signature_url, signature_drawn_url, signature_active_type")
+      .select("*")
       .in("id", allUserIds);
 
-    if (profileFull.error) {
-      // Signature columns not migrated yet — retry with base columns only
-      if (profileFull.error.code === "42703" || profileFull.error.message?.includes("signature")) {
-        const profileBase = await supabaseAdmin
-          .from("profiles")
-          .select("id, full_name, full_name_ar, role, department, avatar_url")
-          .in("id", allUserIds);
-        if (profileBase.error) throw profileBase.error;
-        profiles = (profileBase.data || []) as ProfileRow[];
-      } else {
-        throw profileFull.error;
-      }
-    } else {
-      profiles = (profileFull.data || []) as ProfileRow[];
-    }
+    if (profErr) throw profErr;
+    const profiles = (profileData || []) as ProfileRow[];
 
     const actMap = new Map<string, ActRow>(acts.map(a => [a.user_id as string, a]));
+
+    // Helper: convert a storage path or full URL → public https URL
+    function toPublicUrl(pathOrUrl: string | null | undefined): string | null {
+      if (!pathOrUrl) return null;
+      if (pathOrUrl.startsWith("http://") || pathOrUrl.startsWith("https://")) return pathOrUrl;
+      const { data } = supabaseAdmin.storage.from("hospital-files").getPublicUrl(pathOrUrl);
+      return data?.publicUrl ?? null;
+    }
+
+    // 4b. List storage files once as the most reliable signature source.
+    //     Files are named {userId}.{ext} inside signatures/uploaded/ or signatures/drawn/
+    const [uploadedListing, drawnListing] = await Promise.all([
+      supabaseAdmin.storage.from("hospital-files").list("signatures/uploaded", { limit: 1000 }),
+      supabaseAdmin.storage.from("hospital-files").list("signatures/drawn",   { limit: 1000 }),
+    ]);
+    // Build userId → path maps (one for each folder)
+    const uploadedByUser = new Map<string, string>();
+    for (const f of uploadedListing.data ?? []) {
+      const uid = f.name.split(".")[0];
+      if (uid) uploadedByUser.set(uid, `signatures/uploaded/${f.name}`);
+    }
+    const drawnByUser = new Map<string, string>();
+    for (const f of drawnListing.data ?? []) {
+      const uid = f.name.split(".")[0];
+      if (uid) drawnByUser.set(uid, `signatures/drawn/${f.name}`);
+    }
+
+    // Given a userId and active type, return the best storage path
+    function storagePathFor(userId: string, activeType?: string | null): string | null {
+      if (activeType === "drawn") {
+        return drawnByUser.get(userId) ?? uploadedByUser.get(userId) ?? null;
+      }
+      return uploadedByUser.get(userId) ?? drawnByUser.get(userId) ?? null;
+    }
 
     // 5. Build rows
     const rows = profiles.map(p => {
@@ -566,21 +587,27 @@ router.get("/attendance/sheet", requireAuth, async (req, res) => {
           : "active"
         : "inactive";
 
-      // Signature priority: activation snapshot (captured at submit) → profile signature
-      const profileSig = p.signature_active_type === "drawn"
-        ? (p.signature_drawn_url ?? p.signature_url)
-        : (p.signature_url ?? p.signature_drawn_url);
+      // Signature priority:
+      //   1. Activation snapshot (captured at submit time, requires Section 23)
+      //   2. Profile column (requires Sections 15/19)
+      //   3. Storage listing (always works — reads directly from bucket)
+      const rawSig = (act?.signature_url as string | null)
+        ?? (p.signature_active_type === "drawn"
+          ? (p.signature_drawn_url ?? p.signature_url)
+          : (p.signature_url ?? p.signature_drawn_url))
+        ?? storagePathFor(p.id, p.signature_active_type)
+        ?? null;
 
       return {
         user_id:       p.id,
         full_name:     p.full_name     ?? null,
         full_name_ar:  p.full_name_ar  ?? null,
         position:      p.department    ?? p.role ?? null,
-        avatar_url:    p.avatar_url    ?? null,
+        avatar_url:    toPublicUrl(p.avatar_url  ?? null),
         status,
         activation_id: act?.id         ?? null,
         submitted_at:  act?.submitted_at ?? null,
-        signature_url: (act?.signature_url as string | null) ?? profileSig ?? null,
+        signature_url: toPublicUrl(rawSig),
         admin_remarks: (act?.admin_remarks as string | null) ?? "",
       };
     });

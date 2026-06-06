@@ -104,8 +104,9 @@ function fmtCountdown(sec: number) {
 
 function resolveUrl(value?: string | null) {
   if (!value) return undefined;
+  // Backend now returns full public URLs; fall back to path-based resolution for legacy data
   if (value.startsWith("http://") || value.startsWith("https://")) return value;
-  const base = (import.meta as unknown as { env: Record<string, string> }).env.VITE_SUPABASE_URL || "";
+  const base = import.meta.env.VITE_SUPABASE_URL || "";
   return base ? `${base}/storage/v1/object/public/hospital-files/${value}` : value;
 }
 
