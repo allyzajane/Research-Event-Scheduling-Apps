@@ -121,7 +121,7 @@ function Router() {
         </Route>
 
         <Route path="/admin/attendance-control">
-          <ProtectedRoute adminOnly>
+          <ProtectedRoute allowedRoles={["admin", "ceo", "director"]}>
             <AppLayout><AttendanceControlPage /></AppLayout>
           </ProtectedRoute>
         </Route>

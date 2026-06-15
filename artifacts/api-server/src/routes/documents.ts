@@ -221,7 +221,26 @@ router.get("/documents/:id", requireAuth, async (req, res) => {
       return;
     }
 
-    res.json(data);
+    const userIsAdmin = isAdminRole(req.user!.role);
+    if (userIsAdmin) {
+      res.json({ ...data, can_download: true });
+      return;
+    }
+
+    // Non-admin: check explicit download permission before revealing file_url.
+    const { data: perm } = await supabaseAdmin
+      .from("document_download_permissions")
+      .select("document_id")
+      .eq("document_id", req.params.id)
+      .eq("user_id", req.user!.id)
+      .maybeSingle();
+
+    const canDownload = !!perm;
+    res.json({
+      ...data,
+      can_download: canDownload,
+      file_url: canDownload ? data.file_url : null,
+    });
   } catch (err) {
     req.log.error({ err }, "Failed to get document");
     res.status(500).json({ error: "Internal server error" });

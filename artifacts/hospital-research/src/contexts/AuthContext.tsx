@@ -15,12 +15,19 @@ export interface AuthUser {
   department?: string;
 }
 
+/** Roles that have elevated (admin-tier) privileges — mirrors backend ADMIN_ROLES. */
+export const ADMIN_ROLES = ["admin", "ceo", "director"] as const;
+export type AdminRole = typeof ADMIN_ROLES[number];
+
 interface AuthContextType {
   user: AuthUser | null;
   session: Session | null;
   loading: boolean;
   sessionReady: boolean;
+  /** True only for the "admin" role — full system administrator. */
   isAdmin: boolean;
+  /** True for admin, ceo, or director — mirrors backend ADMIN_ROLES. */
+  isAdminTier: boolean;
   role: string;
   signIn: (email: string, password: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
@@ -149,11 +156,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [sessionReady]);
 
-  const role    = user?.role || "";
-  const isAdmin = role === "admin";
+  const role        = user?.role || "";
+  const isAdmin     = role === "admin";
+  const isAdminTier = (ADMIN_ROLES as readonly string[]).includes(role);
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, sessionReady, isAdmin, role, signIn, signOut, updateUser, refreshProfile }}>
+    <AuthContext.Provider value={{ user, session, loading, sessionReady, isAdmin, isAdminTier, role, signIn, signOut, updateUser, refreshProfile }}>
       {children}
     </AuthContext.Provider>
   );
