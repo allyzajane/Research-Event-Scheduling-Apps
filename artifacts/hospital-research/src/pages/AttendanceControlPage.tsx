@@ -197,10 +197,11 @@ function ParticipantRow({ profile, activation, selected, onToggle, onRevoke, isA
 function RemarksCell({ activationId, initial, isAr }: {
   activationId: string; initial: string; isAr: boolean;
 }) {
-  const [value,   setValue]   = useState(initial);
-  const [saving,  setSaving]  = useState(false);
-  const [saved,   setSaved]   = useState(false);
-  const dirty = value !== initial;
+  const [value,     setValue]     = useState(initial);
+  const [lastSaved, setLastSaved] = useState(initial);
+  const [saving,    setSaving]    = useState(false);
+  const [saved,     setSaved]     = useState(false);
+  const dirty = value !== lastSaved;
 
   const save = async () => {
     setSaving(true);
@@ -211,6 +212,7 @@ function RemarksCell({ activationId, initial, isAr }: {
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
         body: JSON.stringify({ remarks: value }),
       });
+      setLastSaved(value);
       setSaved(true);
       setTimeout(() => setSaved(false), 2000);
     } finally { setSaving(false); }
