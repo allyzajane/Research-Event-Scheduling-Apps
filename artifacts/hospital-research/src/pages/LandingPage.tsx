@@ -220,7 +220,7 @@ export default function LandingPage() {
             <span className="text-sm font-medium text-foreground">{hospitalName}</span>
           </div>
           <p className="text-xs text-muted-foreground">
-            {i18n.language === "ar" ? "© 2025 جميع الحقوق محفوظة" : "© 2025 All rights reserved"}
+            {i18n.language === "ar" ? "© 2026 جميع الحقوق محفوظة" : "© 2026 All rights reserved"}
           </p>
         </div>
       </footer>
